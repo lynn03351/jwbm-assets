@@ -8,14 +8,13 @@
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
 
   :root {
-    --pink:    #f7b8c4;
-    --pink2:   #f48fb1;
-    --green:   #b5d99c;
-    --green2:  #7ec26a;
-    --yellow:  #fde68a;
-    --cream:   #fffbf0;
-    --text:    #3a3028;
-    --mid:     #7a6a60;
+    --sea:     #0077b6;
+    --sea2:    #00b4d8;
+    --sea3:    #90e0ef;
+    --seafoam: #caf0f8;
+    --sand:    #f4f1e8;
+    --text:    #1a2e3b;
+    --mid:     #4a6578;
     --orange:  #E85418;
   }
 
@@ -33,7 +32,7 @@
 
   body {
     font-family: 'Noto Sans KR', sans-serif;
-    background: var(--cream);
+    background: var(--sand);
     color: var(--text);
     max-width: 640px;
     margin: 0 auto;
@@ -46,7 +45,7 @@
     pointer-events: none;
   }
 
-  /* ── 벚꽃 파티클 ── */
+  /* ── 바다 거품 파티클 ── */
   .petals {
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%;
@@ -54,23 +53,23 @@
   }
 
   .petal {
-    position: absolute; top: -20px;
+    position: absolute; bottom: -20px;
     width: 10px; height: 10px;
-    border-radius: 50% 0 50% 0;
-    opacity: 0.7;
-    animation: fall linear infinite;
+    border-radius: 50%;
+    opacity: 0.5;
+    animation: rise linear infinite;
   }
 
-  @keyframes fall {
-    0%   { transform: translateY(0) rotate(0deg) translateX(0); opacity: 0.8; }
-    50%  { transform: translateY(50vh) rotate(180deg) translateX(30px); opacity: 0.6; }
-    100% { transform: translateY(110vh) rotate(360deg) translateX(-20px); opacity: 0; }
+  @keyframes rise {
+    0%   { transform: translateY(0) translateX(0); opacity: 0.5; }
+    50%  { transform: translateY(-50vh) translateX(15px); opacity: 0.3; }
+    100% { transform: translateY(-110vh) translateX(-10px); opacity: 0; }
   }
 
   /* ── 히어로 배너 ── */
   .hero {
     position: relative; z-index: 1;
-    background: linear-gradient(160deg, #fce4ec 0%, #f8bbd0 30%, #dcedc8 70%, #c8e6c9 100%);
+    background: linear-gradient(160deg, #023e8a 0%, #0077b6 35%, #0096c7 65%, #00b4d8 100%);
     padding: 48px 24px 56px;
     text-align: center;
     overflow: hidden;
@@ -79,13 +78,13 @@
   .hero::before {
     content: '';
     position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.5) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 80%, rgba(181,217,156,0.4) 0%, transparent 50%);
+    background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.2) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(0,180,216,0.3) 0%, transparent 50%);
   }
 
   .hero-badge {
     display: inline-block;
-    background: var(--orange);
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
     color: #fff;
     font-size: 11px; font-weight: 700;
     padding: 5px 14px; border-radius: 20px;
@@ -98,15 +97,16 @@
     font-size: 34px; font-weight: 900;
     line-height: 1.2; letter-spacing: -0.03em;
     position: relative; z-index: 1;
+    color: #fff;
     animation: fadeUp 0.6s 0.1s ease both;
   }
 
-  .hero-title .accent { color: var(--orange); }
-  .hero-title .green  { color: #4caf50; }
+  .hero-title .accent { color: #90e0ef; }
+  .hero-title .green  { color: #caf0f8; }
 
   .hero-sub {
     margin-top: 12px;
-    font-size: 14px; color: var(--mid); font-weight: 500;
+    font-size: 14px; color: rgba(255,255,255,0.85); font-weight: 500;
     position: relative; z-index: 1;
     animation: fadeUp 0.6s 0.2s ease both;
   }
@@ -114,10 +114,10 @@
   .hero-period {
     display: inline-flex; align-items: center; gap: 6px;
     margin-top: 20px;
-    background: rgba(255,255,255,0.7);
+    background: rgba(255,255,255,0.2);
     backdrop-filter: blur(6px);
     padding: 8px 18px; border-radius: 30px;
-    font-size: 13px; font-weight: 600; color: var(--text);
+    font-size: 13px; font-weight: 600; color: #fff;
     position: relative; z-index: 1;
     animation: fadeUp 0.6s 0.3s ease both;
   }
@@ -151,7 +151,7 @@
     background: #fff;
     border-radius: 16px;
     padding: 18px 16px;
-    border: 2px dashed var(--pink2);
+    border: 2px dashed var(--sea2);
     position: relative; overflow: hidden;
     animation: fadeUp 0.5s ease both;
   }
@@ -161,11 +161,11 @@
     position: absolute; top: -20px; right: -20px;
     width: 70px; height: 70px;
     border-radius: 50%;
-    background: var(--pink); opacity: 0.3;
+    background: var(--sea3); opacity: 0.4;
   }
 
-  .coupon-card.green-card { border-color: var(--green2); }
-  .coupon-card.green-card::before { background: var(--green); }
+  .coupon-card.green-card { border-color: var(--sea); }
+  .coupon-card.green-card::before { background: var(--sea2); }
 
   .coupon-label {
     font-size: 11px; font-weight: 700;
@@ -198,8 +198,8 @@
 
   .coupon-btn:hover { background: #d04510; }
   .coupon-btn:active { transform: scale(0.97); }
-  .coupon-btn.green { background: var(--green2); }
-  .coupon-btn.green:hover { background: #5ea84e; }
+  .coupon-btn.green { background: var(--sea); }
+  .coupon-btn.green:hover { background: #005f8a; }
 
   .coupon-period {
     font-size: 10px; color: #bbb;
@@ -209,7 +209,7 @@
   /* ── 구분선 ── */
   .divider {
     height: 8px;
-    background: linear-gradient(90deg, #fce4ec, #dcedc8, #fce4ec);
+    background: linear-gradient(90deg, #caf0f8, #0096c7, #caf0f8);
     position: relative; z-index: 1;
   }
 
@@ -237,7 +237,7 @@
   .product-img {
     width: 100%; aspect-ratio: 1;
     object-fit: cover;
-    background: linear-gradient(135deg, #fce4ec, #dcedc8);
+    background: linear-gradient(135deg, #caf0f8, #90e0ef);
     display: flex; align-items: center; justify-content: center;
     font-size: 48px;
   }
@@ -248,7 +248,7 @@
     display: inline-block;
     font-size: 10px; font-weight: 700;
     padding: 2px 8px; border-radius: 4px;
-    background: #fff0eb; color: var(--orange);
+    background: #e0f7fa; color: var(--sea);
     margin-bottom: 6px;
   }
 
@@ -279,14 +279,14 @@
 
   /* ── 이벤트 설명 ── */
   .event-desc-box {
-    background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #dcedc8 100%);
+    background: linear-gradient(135deg, #caf0f8 0%, #ade8f4 50%, #90e0ef 100%);
     border-radius: 18px;
     padding: 24px 20px;
     position: relative; overflow: hidden;
   }
 
   .event-desc-box::after {
-    content: '🌸';
+    content: '🐟';
     position: absolute; right: 16px; bottom: 12px;
     font-size: 60px; opacity: 0.15;
   }
@@ -439,25 +439,25 @@
 
 <!-- 히어로 배너 -->
 <div class="hero">
-  <div class="hero-badge">🌸 SPRING EVENT 2025</div>
+  <div class="hero-badge">🐟 SEAFOOD EVENT 2025</div>
   <div class="hero-title">
-    <span class="accent">봄</span>을<br>
-    준비해<span class="green">봄</span>
+    <span class="accent">싱싱한</span><br>
+    <span class="green">제철 수산물</span>
   </div>
-  <div class="hero-sub">제철밥상과 함께하는 봄맞이 특별 기획전</div>
-  <div class="hero-period">📅 2025.03.01 ~ 2025.04.30</div>
-  <div class="hero-emojis">🌸🥬🐟🌿</div>
+  <div class="hero-sub">제철밥상과 함께하는 수산물 특가 기획전</div>
+  <div class="hero-period">📅 2025.03.01 ~ 2025.03.31</div>
+  <div class="hero-emojis">🐟🦑🦐🐙</div>
 </div>
 
 <!-- 이벤트 설명 -->
 <div class="section">
   <div class="event-desc-box">
-    <div class="event-desc-title">🌱 봄이 왔어요!</div>
+    <div class="event-desc-title">🌊 바다의 맛!</div>
     <div class="event-desc-text">
-      따뜻한 봄과 함께<br>
-      <span class="event-highlight">제철 봄나물·수산물</span>을 특별 할인가로 만나보세요.<br><br>
-      매주 새로운 상품이 업데이트되며,<br>
-      기간 내 구매 시 <span class="event-highlight">봄 전용 쿠폰</span>까지 증정!
+      싱싱한 제철 수산물을<br>
+      <span class="event-highlight">최대 40% 특가</span>로 만나보세요.<br><br>
+      매주 새로운 수산물이 업데이트되며,<br>
+      기간 내 구매 시 <span class="event-highlight">수산물 전용 쿠폰</span>까지 증정!
     </div>
   </div>
 </div>
@@ -466,7 +466,7 @@
 
 <!-- 쿠폰 섹션 -->
 <div class="section">
-  <div class="section-title">🎁 봄 전용 쿠폰</div>
+  <div class="section-title">🎁 수산물 전용 쿠폰</div>
   <div class="coupon-grid">
 
     <div class="coupon-card" style="animation-delay:0s">
@@ -478,9 +478,9 @@
     </div>
 
     <div class="coupon-card green-card" style="animation-delay:0.1s">
-      <div class="coupon-label">봄나물 전용</div>
+      <div class="coupon-label">수산물 전용</div>
       <div class="coupon-discount">20<span>%</span></div>
-      <div class="coupon-desc">봄나물 카테고리<br>전 상품 적용</div>
+      <div class="coupon-desc">수산물 카테고리<br>전 상품 적용</div>
       <button class="coupon-btn green" onclick="downloadCoupon(this)">쿠폰 받기</button>
       <div class="coupon-period">~ 2025.04.30</div>
     </div>
@@ -508,44 +508,18 @@
 
 <!-- 상품 리스트 -->
 <div class="section">
-  <div class="section-title">🛒 봄 기획전 상품</div>
+  <div class="section-title">🛒 수산물 기획전 상품</div>
   <div class="product-grid">
 
-    <div class="product-card">
-      <div class="product-img">🥬</div>
-      <div class="product-info">
-        <div class="product-tag">봄나물</div>
-        <div class="product-name">국내산 달래 200g</div>
-        <div class="product-price-wrap">
-          <span class="product-original">5,900원</span>
-          <span class="product-price">3,900원</span>
-          <span class="product-sale">34%</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="product-card">
-      <div class="product-img">🌿</div>
-      <div class="product-info">
-        <div class="product-tag">봄나물</div>
-        <div class="product-name">제철 냉이 150g</div>
-        <div class="product-price-wrap">
-          <span class="product-original">4,500원</span>
-          <span class="product-price">2,900원</span>
-          <span class="product-sale">36%</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="product-card">
+    <div class="product-card" onclick="location.href='https://www.jecheolbabsang.com/Goods/Detail/SAI14346683'" style="cursor:pointer;">
       <div class="product-img">🐟</div>
       <div class="product-info">
         <div class="product-tag">제철수산</div>
-        <div class="product-name">봄 도다리 500g</div>
+        <div class="product-name">국내산 광어 500g</div>
         <div class="product-price-wrap">
-          <span class="product-original">22,000원</span>
-          <span class="product-price">16,900원</span>
-          <span class="product-sale">23%</span>
+          <span class="product-original">28,000원</span>
+          <span class="product-price">18,900원</span>
+          <span class="product-sale">32%</span>
         </div>
       </div>
     </div>
@@ -564,27 +538,53 @@
     </div>
 
     <div class="product-card">
-      <div class="product-img">🥦</div>
+      <div class="product-img">🦐</div>
       <div class="product-info">
-        <div class="product-tag">봄채소</div>
-        <div class="product-name">제철 봄동 1포기</div>
+        <div class="product-tag">제철수산</div>
+        <div class="product-name">대하 500g (특대)</div>
         <div class="product-price-wrap">
-          <span class="product-original">3,800원</span>
-          <span class="product-price">2,500원</span>
-          <span class="product-sale">34%</span>
+          <span class="product-original">24,000원</span>
+          <span class="product-price">16,500원</span>
+          <span class="product-sale">31%</span>
         </div>
       </div>
     </div>
 
     <div class="product-card">
-      <div class="product-img">🍄</div>
+      <div class="product-img">🐙</div>
       <div class="product-info">
-        <div class="product-tag">봄나물</div>
-        <div class="product-name">참두릅 300g</div>
+        <div class="product-tag">제철수산</div>
+        <div class="product-name">손질 낙지 400g</div>
         <div class="product-price-wrap">
-          <span class="product-original">12,000원</span>
-          <span class="product-price">8,900원</span>
-          <span class="product-sale">26%</span>
+          <span class="product-original">15,000원</span>
+          <span class="product-price">10,900원</span>
+          <span class="product-sale">27%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🦀</div>
+      <div class="product-info">
+        <div class="product-tag">제철수산</div>
+        <div class="product-name">꽃게 1kg (암게)</div>
+        <div class="product-price-wrap">
+          <span class="product-original">32,000원</span>
+          <span class="product-price">22,900원</span>
+          <span class="product-sale">28%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🐡</div>
+      <div class="product-info">
+        <div class="product-tag">제철수산</div>
+        <div class="product-name">참돔 회뜨기 500g</div>
+        <div class="product-price-wrap">
+          <span class="product-original">35,000원</span>
+          <span class="product-price">24,900원</span>
+          <span class="product-sale">29%</span>
         </div>
       </div>
     </div>
@@ -596,7 +596,7 @@
 <div style="height: 40px;"></div>
 
 <!-- 토스트 -->
-<div class="toast" id="toast">🎉 쿠폰이 발급되었어요!</div>
+<div class="toast" id="toast">🐟 쿠폰이 발급되었어요!</div>
 
 <script>
   // 뒤로가기 — 슬라이드 아웃 후 이동
@@ -628,12 +628,12 @@
   });
 
   // 벚꽃 파티클 생성
-  var colors = ['#f7b8c4','#f48fb1','#fce4ec','#dcedc8','#b5d99c','#fff9c4'];
-  var petalsEl = document.getElementById('petals');
+  var colors = ['#caf0f8','#90e0ef','#00b4d8','#ade8f4','#ffffff','#0096c7'];
+  var petalsEl = document.getElementById('petals'); petalsEl.style.pointerEvents='none';
   for (var i = 0; i < 18; i++) {
     var p = document.createElement('div');
     p.className = 'petal';
-    p.style.left = Math.random() * 100 + '%';
+    p.style.left = Math.random() * 100 + '%; p.style.top = 'auto';
     p.style.background = colors[Math.floor(Math.random() * colors.length)];
     p.style.width = (8 + Math.random() * 8) + 'px';
     p.style.height = (8 + Math.random() * 8) + 'px';
