@@ -344,29 +344,35 @@
 <body>
 
 <!-- 자사몰 상단 navbar -->
-<nav class="navbar" id="navbar" style="border:0; position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:640px; z-index:201; background:#fff; box-sizing:border-box;">
-  <div class="menu_wrappercenter btn_type_maintop" style="display:flex; align-items:center; justify-content:space-between; padding:0 15px; height:52px;">
-    <div class="lefttype">
-      <a href="javascript: void sideMenuAciton('open');" class="btn_menu toggler" data-whois="toggler">
-        <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_icon/airgram123/대지1사본22_20231123014429569_1.png" class="trf_trl3d MainNav" style="height:24px;">
-      </a>
-    </div>
-    <div class="logo_wrapper">
-      <a href="javascript: void sl_home('/');" class="logo apphref">
-        <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_logo/airgram123/09.jpg" alt="" class="trf_trl3d" style="height:32px;">
-      </a>
-    </div>
-    <div class="righttype" style="display:flex; align-items:center; gap:8px;">
-      <a href="/Home/Search" class="apphref">
-        <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_icon/airgram123/대지1사본21_20231123014516733_1.png" class="trf_trl3d MainNav" style="height:24px;">
-      </a>
-      <a href="/Order/Basket" class="apphref main-basket">
-        <span class="basket-exist text-white main-cartcnt hide" id="cartcnt" style="background-color:"></span>
-        <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_icon/airgram123/대지1사본20_20231123014643481_1.png" class="trf_trl3d MainNav" style="height:24px;">
-      </a>
-    </div>
+<div style="
+  position:fixed; top:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:640px; z-index:201; background:#fff;
+  box-sizing:border-box; border-bottom:1px solid #eee;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 15px; height:52px;
+">
+  <!-- 왼쪽: 햄버거 -->
+  <div style="width:40px; display:flex; align-items:center;">
+    <a href="https://www.jecheolbabsang.com/">
+      <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_icon/airgram123/대지1사본22_20231123014429569_1.png" style="height:24px; display:block;">
+    </a>
   </div>
-</nav>
+  <!-- 가운데: 로고 -->
+  <div style="flex:1; display:flex; justify-content:center; align-items:center;">
+    <a href="https://www.jecheolbabsang.com/">
+      <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_logo/airgram123/09.jpg" alt="제철밥상" style="height:30px; display:block;">
+    </a>
+  </div>
+  <!-- 오른쪽: 검색 + 장바구니 -->
+  <div style="width:40px; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+    <a href="https://www.jecheolbabsang.com/Home/Search">
+      <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_icon/airgram123/대지1사본21_20231123014516733_1.png" style="height:24px; display:block;">
+    </a>
+    <a href="https://www.jecheolbabsang.com/Order/Basket">
+      <img src="https://spdy-flexg-150.flexgate.co.kr/data/main_icon/airgram123/대지1사본20_20231123014643481_1.png" style="height:24px; display:block;">
+    </a>
+  </div>
+</div>
 
 <!-- GNB -->
 <div style="
