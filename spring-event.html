@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>봄을 준비해봄 🌸</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+
+  :root {
+    --pink:    #f7b8c4;
+    --pink2:   #f48fb1;
+    --green:   #b5d99c;
+    --green2:  #7ec26a;
+    --yellow:  #fde68a;
+    --cream:   #fffbf0;
+    --text:    #3a3028;
+    --mid:     #7a6a60;
+    --orange:  #E85418;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    max-width: 640px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
+
+  /* ── 벚꽃 파티클 ── */
+  .petals {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 0; overflow: hidden;
+  }
+
+  .petal {
+    position: absolute; top: -20px;
+    width: 10px; height: 10px;
+    border-radius: 50% 0 50% 0;
+    opacity: 0.7;
+    animation: fall linear infinite;
+  }
+
+  @keyframes fall {
+    0%   { transform: translateY(0) rotate(0deg) translateX(0); opacity: 0.8; }
+    50%  { transform: translateY(50vh) rotate(180deg) translateX(30px); opacity: 0.6; }
+    100% { transform: translateY(110vh) rotate(360deg) translateX(-20px); opacity: 0; }
+  }
+
+  /* ── 히어로 배너 ── */
+  .hero {
+    position: relative; z-index: 1;
+    background: linear-gradient(160deg, #fce4ec 0%, #f8bbd0 30%, #dcedc8 70%, #c8e6c9 100%);
+    padding: 48px 24px 56px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.5) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(181,217,156,0.4) 0%, transparent 50%);
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: var(--orange);
+    color: #fff;
+    font-size: 11px; font-weight: 700;
+    padding: 5px 14px; border-radius: 20px;
+    letter-spacing: 0.06em; margin-bottom: 16px;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero-title {
+    font-size: 34px; font-weight: 900;
+    line-height: 1.2; letter-spacing: -0.03em;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .hero-title .accent { color: var(--orange); }
+  .hero-title .green  { color: #4caf50; }
+
+  .hero-sub {
+    margin-top: 12px;
+    font-size: 14px; color: var(--mid); font-weight: 500;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-period {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 20px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(6px);
+    padding: 8px 18px; border-radius: 30px;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    position: relative; z-index: 1;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .hero-emojis {
+    font-size: 40px;
+    margin-top: 24px; letter-spacing: 8px;
+    position: relative; z-index: 1;
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+
+  /* ── 쿠폰 섹션 ── */
+  .section {
+    position: relative; z-index: 1;
+    padding: 28px 20px;
+  }
+
+  .section-title {
+    font-size: 18px; font-weight: 900;
+    letter-spacing: -0.02em; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .coupon-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .coupon-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px 16px;
+    border: 2px dashed var(--pink2);
+    position: relative; overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .coupon-card::before {
+    content: '';
+    position: absolute; top: -20px; right: -20px;
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: var(--pink); opacity: 0.3;
+  }
+
+  .coupon-card.green-card { border-color: var(--green2); }
+  .coupon-card.green-card::before { background: var(--green); }
+
+  .coupon-label {
+    font-size: 11px; font-weight: 700;
+    color: var(--orange); letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+
+  .coupon-discount {
+    font-size: 32px; font-weight: 900;
+    color: var(--text); line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .coupon-discount span { font-size: 16px; }
+
+  .coupon-desc {
+    font-size: 12px; color: var(--mid);
+    margin-top: 6px; line-height: 1.4;
+  }
+
+  .coupon-btn {
+    display: block; width: 100%;
+    margin-top: 12px; padding: 8px;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: 8px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s, transform 0.1s;
+  }
+
+  .coupon-btn:hover { background: #d04510; }
+  .coupon-btn:active { transform: scale(0.97); }
+  .coupon-btn.green { background: var(--green2); }
+  .coupon-btn.green:hover { background: #5ea84e; }
+
+  .coupon-period {
+    font-size: 10px; color: #bbb;
+    margin-top: 6px; text-align: center;
+  }
+
+  /* ── 구분선 ── */
+  .divider {
+    height: 8px;
+    background: linear-gradient(90deg, #fce4ec, #dcedc8, #fce4ec);
+    position: relative; z-index: 1;
+  }
+
+  /* ── 상품 리스트 ── */
+  .product-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .product-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  }
+
+  .product-img {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover;
+    background: linear-gradient(135deg, #fce4ec, #dcedc8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+  }
+
+  .product-info { padding: 12px; }
+
+  .product-tag {
+    display: inline-block;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+    background: #fff0eb; color: var(--orange);
+    margin-bottom: 6px;
+  }
+
+  .product-name {
+    font-size: 13px; font-weight: 700;
+    line-height: 1.4; color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .product-price-wrap {
+    display: flex; align-items: baseline; gap: 6px;
+  }
+
+  .product-original {
+    font-size: 11px; color: #bbb;
+    text-decoration: line-through;
+  }
+
+  .product-price {
+    font-size: 16px; font-weight: 900;
+    color: var(--orange);
+  }
+
+  .product-sale {
+    font-size: 11px; font-weight: 700;
+    color: #f44336;
+  }
+
+  /* ── 이벤트 설명 ── */
+  .event-desc-box {
+    background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #dcedc8 100%);
+    border-radius: 18px;
+    padding: 24px 20px;
+    position: relative; overflow: hidden;
+  }
+
+  .event-desc-box::after {
+    content: '🌸';
+    position: absolute; right: 16px; bottom: 12px;
+    font-size: 60px; opacity: 0.15;
+  }
+
+  .event-desc-title {
+    font-size: 20px; font-weight: 900;
+    letter-spacing: -0.02em; margin-bottom: 10px;
+  }
+
+  .event-desc-text {
+    font-size: 13px; line-height: 1.8;
+    color: var(--mid);
+  }
+
+  .event-highlight {
+    display: inline-block;
+    background: rgba(255,255,255,0.6);
+    padding: 2px 8px; border-radius: 4px;
+    color: var(--orange); font-weight: 700;
+  }
+
+  /* ── 하단 고정 CTA 제거 (iframe 환경 고려) ── */
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 상품 카드 애니메이션 딜레이 */
+  .product-card:nth-child(1) { animation-delay: 0s; }
+  .product-card:nth-child(2) { animation-delay: 0.08s; }
+  .product-card:nth-child(3) { animation-delay: 0.16s; }
+  .product-card:nth-child(4) { animation-delay: 0.24s; }
+  .product-card:nth-child(5) { animation-delay: 0.32s; }
+  .product-card:nth-child(6) { animation-delay: 0.40s; }
+
+  .coupon-card:nth-child(1) { animation-delay: 0s; }
+  .coupon-card:nth-child(2) { animation-delay: 0.1s; }
+  .coupon-card:nth-child(3) { animation-delay: 0.2s; }
+  .coupon-card:nth-child(4) { animation-delay: 0.3s; }
+
+  /* 복사 토스트 */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #333; color: #fff;
+    padding: 10px 22px; border-radius: 24px;
+    font-size: 13px; font-weight: 600;
+    opacity: 0; transition: all 0.3s; z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- 벚꽃 파티클 -->
+<div class="petals" id="petals"></div>
+
+<!-- 히어로 배너 -->
+<div class="hero">
+  <div class="hero-badge">🌸 SPRING EVENT 2025</div>
+  <div class="hero-title">
+    <span class="accent">봄</span>을<br>
+    준비해<span class="green">봄</span>
+  </div>
+  <div class="hero-sub">제철밥상과 함께하는 봄맞이 특별 기획전</div>
+  <div class="hero-period">📅 2025.03.01 ~ 2025.04.30</div>
+  <div class="hero-emojis">🌸🥬🐟🌿</div>
+</div>
+
+<!-- 이벤트 설명 -->
+<div class="section">
+  <div class="event-desc-box">
+    <div class="event-desc-title">🌱 봄이 왔어요!</div>
+    <div class="event-desc-text">
+      따뜻한 봄과 함께<br>
+      <span class="event-highlight">제철 봄나물·수산물</span>을 특별 할인가로 만나보세요.<br><br>
+      매주 새로운 상품이 업데이트되며,<br>
+      기간 내 구매 시 <span class="event-highlight">봄 전용 쿠폰</span>까지 증정!
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- 쿠폰 섹션 -->
+<div class="section">
+  <div class="section-title">🎁 봄 전용 쿠폰</div>
+  <div class="coupon-grid">
+
+    <div class="coupon-card" style="animation-delay:0s">
+      <div class="coupon-label">첫 구매 쿠폰</div>
+      <div class="coupon-discount">30<span>%</span></div>
+      <div class="coupon-desc">첫 구매 고객 한정<br>최대 5,000원 할인</div>
+      <button class="coupon-btn" onclick="downloadCoupon(this)">쿠폰 받기</button>
+      <div class="coupon-period">~ 2025.04.30</div>
+    </div>
+
+    <div class="coupon-card green-card" style="animation-delay:0.1s">
+      <div class="coupon-label">봄나물 전용</div>
+      <div class="coupon-discount">20<span>%</span></div>
+      <div class="coupon-desc">봄나물 카테고리<br>전 상품 적용</div>
+      <button class="coupon-btn green" onclick="downloadCoupon(this)">쿠폰 받기</button>
+      <div class="coupon-period">~ 2025.04.30</div>
+    </div>
+
+    <div class="coupon-card" style="animation-delay:0.2s">
+      <div class="coupon-label">수산물 특가</div>
+      <div class="coupon-discount">15<span>%</span></div>
+      <div class="coupon-desc">제철 수산물 전품목<br>주문 금액 무관</div>
+      <button class="coupon-btn" onclick="downloadCoupon(this)">쿠폰 받기</button>
+      <div class="coupon-period">~ 2025.03.31</div>
+    </div>
+
+    <div class="coupon-card green-card" style="animation-delay:0.3s">
+      <div class="coupon-label">무료배송 쿠폰</div>
+      <div class="coupon-discount">0<span>원</span></div>
+      <div class="coupon-desc">배송비 무료<br>금액 제한 없음</div>
+      <button class="coupon-btn green" onclick="downloadCoupon(this)">쿠폰 받기</button>
+      <div class="coupon-period">~ 2025.04.15</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- 상품 리스트 -->
+<div class="section">
+  <div class="section-title">🛒 봄 기획전 상품</div>
+  <div class="product-grid">
+
+    <div class="product-card">
+      <div class="product-img">🥬</div>
+      <div class="product-info">
+        <div class="product-tag">봄나물</div>
+        <div class="product-name">국내산 달래 200g</div>
+        <div class="product-price-wrap">
+          <span class="product-original">5,900원</span>
+          <span class="product-price">3,900원</span>
+          <span class="product-sale">34%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🌿</div>
+      <div class="product-info">
+        <div class="product-tag">봄나물</div>
+        <div class="product-name">제철 냉이 150g</div>
+        <div class="product-price-wrap">
+          <span class="product-original">4,500원</span>
+          <span class="product-price">2,900원</span>
+          <span class="product-sale">36%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🐟</div>
+      <div class="product-info">
+        <div class="product-tag">제철수산</div>
+        <div class="product-name">봄 도다리 500g</div>
+        <div class="product-price-wrap">
+          <span class="product-original">22,000원</span>
+          <span class="product-price">16,900원</span>
+          <span class="product-sale">23%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🦑</div>
+      <div class="product-info">
+        <div class="product-tag">제철수산</div>
+        <div class="product-name">국내산 주꾸미 1kg</div>
+        <div class="product-price-wrap">
+          <span class="product-original">18,000원</span>
+          <span class="product-price">13,500원</span>
+          <span class="product-sale">25%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🥦</div>
+      <div class="product-info">
+        <div class="product-tag">봄채소</div>
+        <div class="product-name">제철 봄동 1포기</div>
+        <div class="product-price-wrap">
+          <span class="product-original">3,800원</span>
+          <span class="product-price">2,500원</span>
+          <span class="product-sale">34%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">🍄</div>
+      <div class="product-info">
+        <div class="product-tag">봄나물</div>
+        <div class="product-name">참두릅 300g</div>
+        <div class="product-price-wrap">
+          <span class="product-original">12,000원</span>
+          <span class="product-price">8,900원</span>
+          <span class="product-sale">26%</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 하단 여백 -->
+<div style="height: 40px;"></div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast">🎉 쿠폰이 발급되었어요!</div>
+
+<script>
+  // 벚꽃 파티클 생성
+  var colors = ['#f7b8c4','#f48fb1','#fce4ec','#dcedc8','#b5d99c','#fff9c4'];
+  var petalsEl = document.getElementById('petals');
+  for (var i = 0; i < 18; i++) {
+    var p = document.createElement('div');
+    p.className = 'petal';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.width = (8 + Math.random() * 8) + 'px';
+    p.style.height = (8 + Math.random() * 8) + 'px';
+    p.style.animationDuration = (4 + Math.random() * 6) + 's';
+    p.style.animationDelay = (Math.random() * 6) + 's';
+    p.style.borderRadius = Math.random() > 0.5 ? '50% 0 50% 0' : '50%';
+    petalsEl.appendChild(p);
+  }
+
+  // 쿠폰 받기
+  function downloadCoupon(btn) {
+    btn.textContent = '✓ 발급완료';
+    btn.style.background = '#aaa';
+    btn.disabled = true;
+    showToast();
+  }
+
+  function showToast() {
+    var t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+</script>
+</body>
+</html>
