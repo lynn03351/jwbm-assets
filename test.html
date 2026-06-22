@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>등급 페이지 iframe 테스트</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    background: #fff; color: #222; padding: 20px 18px;
+  }
+  .ok {
+    background: #e8f5e9; border: 1px solid #4caf50; color: #2e7d32;
+    padding: 13px; border-radius: 10px; text-align: center;
+    font-weight: 700; font-size: 14px; margin-bottom: 18px;
+  }
+  .badge {
+    display: inline-block; background: #cc5254; color: #fff;
+    padding: 6px 14px; border-radius: 999px; font-size: 13px;
+    font-weight: 700; margin-bottom: 14px;
+  }
+  h2 { font-size: 18px; margin-bottom: 14px; }
+  .card {
+    border: 1px solid #eee; border-radius: 12px; padding: 15px;
+    margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .card h3 { font-size: 15px; color: #cc5254; margin-bottom: 6px; }
+  .card p { font-size: 13px; color: #666; line-height: 1.6; }
+  button {
+    width: 100%; background: #cc5254; color: #fff; border: none;
+    padding: 14px; border-radius: 10px; font-size: 15px;
+    font-weight: 700; cursor: pointer; margin: 8px 0;
+  }
+  #extra { display: none; }
+  #extra.show { display: block; }
+  .note { font-size: 11px; color: #999; text-align: center; margin-top: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div class="ok">✅ iframe 정상 로드됨</div>
+  <span class="badge">🌱 새싹</span>
+  <h2>회원등급 안내 (테스트)</h2>
+
+  <div class="card"><h3>일반</h3><p>상품 구매 시 1% 포인트 적립 · APP 구매 시 1% 추가 지급</p></div>
+  <div class="card"><h3>브론즈</h3><p>누적 15만원 · 매월 1일 1,000원 할인쿠폰 지급</p></div>
+  <div class="card"><h3>실버</h3><p>누적 30만원 · 매월 1일 5,000원 할인쿠폰 지급</p></div>
+
+  <button onclick="toggleExtra()">더보기 (높이 동기화 테스트) ▼</button>
+
+  <div id="extra">
+    <div class="card"><h3>골드</h3><p>누적 50만원 · 매월 1일 7,000원 할인쿠폰 지급</p></div>
+    <div class="card"><h3>VIP</h3><p>누적 100만원 · 매월 1일 10,000원 할인쿠폰 지급</p></div>
+  </div>
+
+  <p class="note">이 페이지가 모달 안에 꽉 차게 보이고,<br>더보기를 눌렀을 때 높이가 자연스럽게 늘어나면 성공입니다.</p>
+
+<script>
+  function postH() {
+    parent.postMessage({ jwbmHeight: document.body.scrollHeight }, '*');
+  }
+  function toggleExtra() {
+    document.getElementById('extra').classList.toggle('show');
+    postH();
+  }
+  window.addEventListener('load', postH);
+  // 폰트 로딩/레이아웃 변화로 높이가 바뀌어도 따라가도록
+  if (window.ResizeObserver) {
+    new ResizeObserver(postH).observe(document.body);
+  }
+</script>
+</body>
+</html>
