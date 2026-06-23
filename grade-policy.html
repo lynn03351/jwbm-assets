@@ -29,6 +29,28 @@
 }
 #mbship svg { display:block; }
 
+/* ---------- 내 등급 강조 ---------- */
+#mbship .tier.is-mine {
+  position:relative;
+  border-color:var(--burgundy);
+  border-left-width:5px;
+  box-shadow:0 8px 20px -10px rgba(176,56,63,.55);
+}
+#mbship .tier.is-mine::after {
+  content:"MY"; position:absolute; top:-9px; right:14px;
+  background:var(--burgundy); color:#fff;
+  font-size:11px; font-weight:800; letter-spacing:.5px;
+  padding:3px 10px; border-radius:999px;
+  box-shadow:0 3px 8px -3px rgba(176,56,63,.6);
+}
+#mbship .tier.is-mine .name::after {
+  content:"내 등급"; margin-left:8px; vertical-align:middle;
+  font-size:11px; font-weight:700; color:var(--burgundy);
+  background:rgba(176,56,63,.1); padding:3px 9px; border-radius:999px;
+}
+/* 내 등급이 정해지면 나머지는 살짝 차분하게 */
+#mbship.has-mine .tier:not(.is-mine) { opacity:.62; }
+
 /* ---------- 섹션 헤더 ---------- */
 #mbship .sec-head { text-align:center; margin-bottom:20px; }
 #mbship .sec-head .tt {
@@ -106,7 +128,7 @@
 
   <div class="tier-grid">
 
-    <div class="tier t1">
+    <div class="tier t1" data-grade="씨앗">
       <div class="thead">
         <span class="badge c1"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="5" ry="8" transform="rotate(33 12 12)" fill="#fff"></ellipse></svg></span>
         <span class="name">씨앗</span>
@@ -115,7 +137,7 @@
       <div class="blist"><span class="b none">기본 등급</span></div>
     </div>
 
-    <div class="tier t2">
+    <div class="tier t2" data-grade="새싹">
       <div class="thead">
         <span class="badge c2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21v-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" fill="none"></path><path d="M12 14c0-3.2-2.2-5.4-5.4-5.4C6.6 11.8 8.8 14 12 14z" fill="#fff"></path><path d="M12 14c0-3.2 2.2-5.4 5.4-5.4C17.4 11.8 15.2 14 12 14z" fill="#fff"></path></svg></span>
         <span class="name">새싹</span>
@@ -127,7 +149,7 @@
       </div>
     </div>
 
-    <div class="tier t3">
+    <div class="tier t3" data-grade="잎새">
       <div class="thead">
         <span class="badge c3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20C4 11 11 4 20 4C20 13 13 20 4 20Z" fill="#fff"></path><path d="M7 17 17 7" stroke="#3d8a45" stroke-width="1.7" stroke-linecap="round" fill="none"></path></svg></span>
         <span class="name">잎새</span>
@@ -139,7 +161,7 @@
       </div>
     </div>
 
-    <div class="tier t4">
+    <div class="tier t4" data-grade="열매">
       <div class="thead">
         <span class="badge c4"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5V5.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"></path><path d="M12 8c0-2.2 1.6-3.8 3.8-3.8C15.8 6.4 14.2 8 12 8z" fill="#fff"></path><circle cx="12" cy="14.5" r="6.2" fill="#fff"></circle></svg></span>
         <span class="name">열매</span>
@@ -151,7 +173,7 @@
       </div>
     </div>
 
-    <div class="tier t5">
+    <div class="tier t5" data-grade="나무">
       <div class="thead">
         <span class="badge c5"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="11" y="13" width="2" height="7" rx="1" fill="#fff"></rect><circle cx="12" cy="8.5" r="5" fill="#fff"></circle><circle cx="8" cy="11.5" r="3.4" fill="#fff"></circle><circle cx="16" cy="11.5" r="3.4" fill="#fff"></circle></svg></span>
         <span class="name">나무</span>
@@ -187,8 +209,32 @@
   function postH() {
     parent.postMessage({ jwbmHeight: document.body.scrollHeight }, '*');
   }
+
+  // 옛 등급명 → 식물 등급명 매핑
+  var GRADE_MAP = {
+    '일반':'씨앗', '브론즈':'새싹', '실버':'잎새', '골드':'열매', 'VIP':'나무',
+    '씨앗':'씨앗', '새싹':'새싹', '잎새':'잎새', '열매':'열매', '나무':'나무'
+  };
+
+  // 부모(자사몰)가 읽어서 보낸 현재 등급명을 받아 해당 카드 활성화
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.jwbmRank !== true) return;
+    var raw = (d.grade || '').replace(/\s+/g, '').toUpperCase(); // "V I P" → "VIP"
+    var key = Object.keys(GRADE_MAP).find(function (k) {
+      return k.replace(/\s+/g, '').toUpperCase() === raw;
+    });
+    var mine = key ? GRADE_MAP[key] : null;
+    if (!mine) return;
+    var card = document.querySelector('#mbship .tier[data-grade="' + mine + '"]');
+    if (card) {
+      card.classList.add('is-mine');
+      document.getElementById('mbship').classList.add('has-mine');
+    }
+    postH();
+  });
+
   window.addEventListener('load', postH);
-  // 폰트 로딩으로 높이가 바뀌어도 다시 맞춤
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(postH); }
   if (window.ResizeObserver) { new ResizeObserver(postH).observe(document.body); }
 </script>
