@@ -151,9 +151,11 @@ const worldEl = $('#world'), emptyEl = $('#empty');
 const overlay = $('#overlay'), ovMsg = $('#ovMsg'), ovSub = $('#ovSub'), ovBar = $('#ovBar'), ovImg = $('#ovImg');
 const toastEl = $('#toast');
 let toastTimer;
-function toast(msg){
+function toast(msg, dur=2200){
   toastEl.textContent = msg; toastEl.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2200);
+  toastEl.style.whiteSpace = msg.length>28 ? 'normal' : 'nowrap';
+  toastEl.style.maxWidth = '86vw';
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>toastEl.classList.remove('show'), dur);
 }
 
 /* ---------------- IndexedDB ---------------- */
@@ -278,9 +280,23 @@ let removeBackgroundFn = null, modelReady = false;
 async function loadModel(){
   if(removeBackgroundFn) return removeBackgroundFn;
   ovSub.textContent = '처음 한 번만 AI 모델을 내려받아 (이후엔 캐시돼서 빨라짐)';
-  const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm');
-  removeBackgroundFn = mod.removeBackground;
-  return removeBackgroundFn;
+  const sources = [
+    'https://esm.sh/@imgly/background-removal@1.5.5',
+    'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm',
+    'https://unpkg.com/@imgly/background-removal@1.5.5/dist/index.mjs'
+  ];
+  let lastErr;
+  for(const src of sources){
+    try{
+      ovMsg.textContent = 'AI 모듈 불러오는 중…';
+      const mod = await import(src);
+      if(mod && mod.removeBackground){
+        removeBackgroundFn = mod.removeBackground;
+        return removeBackgroundFn;
+      }
+    }catch(e){ lastErr = e; console.warn('import 실패:', src, e); }
+  }
+  throw new Error('모듈 로딩 실패 — ' + (lastErr && lastErr.message ? lastErr.message : '원인 불명'));
 }
 
 // 투명 여백 잘라내고 MAX_SPRITE 이하로 리사이즈 → {blob,w,h}
@@ -352,7 +368,8 @@ async function handleFile(file){
   }catch(err){
     console.error(err);
     overlay.classList.remove('show');
-    toast(err.message==='empty' ? '사물을 못 찾았어, 다시 찍어봐' : '처리 실패… 네트워크 확인해줘');
+    const m = err && err.message ? err.message : '알 수 없는 오류';
+    toast(m==='empty' ? '사물을 못 찾았어, 다시 찍어봐' : '❌ '+m, 7000);
   }
 }
 
