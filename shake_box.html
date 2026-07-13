@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#171512">
+<title>흔들 보관함</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>
+  :root{
+    --bg:#171512; --box:#221E18; --box-edge:#3A3227;
+    --ink:#F2EDE4; --ink-dim:#9A917F;
+    --amber:#FFB238; --amber-deep:#E08E00;
+    --danger:#FF6B57;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Jua', -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    display:flex; flex-direction:column;
+    touch-action:none;
+  }
+  /* ---------- header ---------- */
+  header{
+    padding:calc(10px + var(--safe-top)) 18px 8px;
+    display:flex; align-items:baseline; gap:10px; flex-shrink:0;
+  }
+  header h1{font-size:22px; font-weight:400; letter-spacing:-0.5px}
+  header .count{font-size:14px; color:var(--amber)}
+  header .hint{margin-left:auto; font-size:12px; color:var(--ink-dim); font-family:-apple-system,sans-serif}
+  /* ---------- box ---------- */
+  #boxWrap{
+    flex:1; position:relative; margin:4px 12px 10px;
+    border-radius:18px; overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #2A251D 0%, var(--box) 55%),
+      var(--box);
+    border:2px solid var(--box-edge);
+    box-shadow: inset 0 14px 30px rgba(0,0,0,.55), inset 0 -6px 16px rgba(0,0,0,.35);
+  }
+  #boxWrap::after{ /* 상자 입구 하이라이트 */
+    content:""; position:absolute; inset:0; pointer-events:none; border-radius:16px;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.06);
+  }
+  #world{position:absolute; inset:0; width:100%; height:100%}
+  #empty{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px; pointer-events:none;
+    color:var(--ink-dim); text-align:center; padding:0 30px;
+  }
+  #empty .big{font-size:44px; filter:grayscale(.4); opacity:.8}
+  #empty p{font-size:15px; line-height:1.5}
+  /* ---------- toolbar ---------- */
+  #bar{
+    flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:14px;
+    padding:6px 18px calc(14px + var(--safe-bottom));
+  }
+  .btn{
+    border:none; cursor:pointer; font-family:inherit; color:var(--ink);
+    background:#26221B; border:1.5px solid var(--box-edge);
+    border-radius:16px; padding:12px 16px; font-size:14px;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    min-width:76px; transition:transform .08s, background .15s, border-color .15s;
+  }
+  .btn:active{transform:scale(.94)}
+  .btn .ico{font-size:20px; line-height:1}
+  .btn.on{background:#3A2B12; border-color:var(--amber); color:var(--amber)}
+  .btn.danger-on{background:#3A1B15; border-color:var(--danger); color:var(--danger)}
+  #btnAdd{
+    background:var(--amber); border-color:var(--amber-deep); color:#221A08;
+    box-shadow:0 6px 18px rgba(255,178,56,.28);
+    min-width:96px; font-size:15px;
+  }
+  #fileIn{display:none}
+  /* ---------- overlay ---------- */
+  #overlay{
+    position:fixed; inset:0; background:rgba(16,14,11,.86);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; z-index:50; padding:0 36px; text-align:center;
+  }
+  #overlay.show{display:flex}
+  #ovImg{max-width:52vw; max-height:32vh; border-radius:12px; display:none;
+    filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}
+  #ovMsg{font-size:17px}
+  #ovSub{font-size:12.5px; color:var(--ink-dim); font-family:-apple-system,sans-serif; line-height:1.5}
+  .track{width:min(260px,70vw); height:8px; border-radius:99px; background:#332E26; overflow:hidden}
+  .track i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--amber-deep),var(--amber)); border-radius:99px; transition:width .2s}
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed; left:50%; transform:translateX(-50%) translateY(20px);
+    bottom:calc(110px + var(--safe-bottom));
+    background:#2B261E; border:1px solid var(--box-edge); color:var(--ink);
+    padding:10px 18px; border-radius:99px; font-size:14px; opacity:0;
+    transition:opacity .25s, transform .25s; pointer-events:none; z-index:60;
+    white-space:nowrap;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>흔들 보관함</h1>
+  <span class="count" id="count"></span>
+  <span class="hint" id="hint"></span>
+</header>
+
+<div id="boxWrap">
+  <div id="world"></div>
+  <div id="empty">
+    <div class="big">📦</div>
+    <p>아직 상자가 비어있어<br>아래 <b>담기</b> 버튼으로 사물을 찍어서 넣어봐</p>
+  </div>
+</div>
+
+<div id="bar">
+  <button class="btn" id="btnShake"><span class="ico">🫨</span><span id="shakeLabel">흔들기 켜기</span></button>
+  <button class="btn" id="btnAdd"><span class="ico">📷</span>담기</button>
+  <button class="btn" id="btnTrash"><span class="ico">🗑️</span>비우기 모드</button>
+</div>
+
+<input type="file" id="fileIn" accept="image/*" capture="environment">
+
+<div id="overlay">
+  <img id="ovImg" alt="">
+  <div id="ovMsg">준비 중…</div>
+  <div class="track"><i id="ovBar"></i></div>
+  <div id="ovSub"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   흔들 보관함 v1
+   촬영 → AI 배경제거(브라우저 내 실행) → IndexedDB 저장
+   → Matter.js 물리 상자 + 폰 흔들기 반응
+   ========================================================= */
+const { Engine, Render, Runner, Bodies, Body, Composite, Mouse, MouseConstraint, Query, Events } = Matter;
+
+const $ = s => document.querySelector(s);
+const worldEl = $('#world'), emptyEl = $('#empty');
+const overlay = $('#overlay'), ovMsg = $('#ovMsg'), ovSub = $('#ovSub'), ovBar = $('#ovBar'), ovImg = $('#ovImg');
+const toastEl = $('#toast');
+let toastTimer;
+function toast(msg){
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2200);
+}
+
+/* ---------------- IndexedDB ---------------- */
+const DB_NAME='shakebox', STORE='items';
+function openDB(){
+  return new Promise((res,rej)=>{
+    const rq = indexedDB.open(DB_NAME,1);
+    rq.onupgradeneeded = e => e.target.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+    rq.onsuccess = e => res(e.target.result);
+    rq.onerror = e => rej(e);
+  });
+}
+async function dbAdd(item){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    const rq = tx.objectStore(STORE).add(item);
+    rq.onsuccess = ()=>res(rq.result); tx.onerror = rej;
+  });
+}
+async function dbAll(){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const rq = db.transaction(STORE).objectStore(STORE).getAll();
+    rq.onsuccess = ()=>res(rq.result); rq.onerror = rej;
+  });
+}
+async function dbDel(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = res; tx.onerror = rej;
+  });
+}
+
+/* ---------------- 물리 세계 ---------------- */
+const engine = Engine.create();
+engine.gravity.y = 1;
+let render, runner, walls = [], mouseConstraint;
+const bodiesById = new Map(); // dbId -> body
+const MAX_SPRITE = 190;       // 저장 스프라이트 최대 px
+
+function boxSize(){ return { w: worldEl.clientWidth, h: worldEl.clientHeight }; }
+
+function setupRender(){
+  const { w, h } = boxSize();
+  render = Render.create({
+    element: worldEl, engine,
+    options: { width:w, height:h, wireframes:false, background:'transparent',
+               pixelRatio: Math.min(window.devicePixelRatio||1, 2) }
+  });
+  Render.run(render);
+  runner = Runner.create();
+  Runner.run(runner, engine);
+
+  const mouse = Mouse.create(render.canvas);
+  mouse.pixelRatio = render.options.pixelRatio;
+  mouseConstraint = MouseConstraint.create(engine, {
+    mouse, constraint:{ stiffness:0.15, render:{visible:false} }
+  });
+  Composite.add(engine.world, mouseConstraint);
+
+  // 비우기 모드: 터치한 물체 삭제
+  Events.on(mouseConstraint, 'mousedown', () => {
+    if(!trashMode) return;
+    const found = Query.point(Composite.allBodies(engine.world), mouseConstraint.mouse.position)
+                  .find(b => b.dbId != null);
+    if(found) removeItem(found);
+  });
+}
+
+function buildWalls(){
+  walls.forEach(w=>Composite.remove(engine.world,w));
+  const { w, h } = boxSize(), T = 120;
+  const opt = { isStatic:true, render:{visible:false} };
+  walls = [
+    Bodies.rectangle(w/2, h+T/2, w+T*2, T, opt),   // 바닥
+    Bodies.rectangle(w/2, -T/2, w+T*2, T, opt),    // 천장(뚜껑)
+    Bodies.rectangle(-T/2, h/2, T, h+T*2, opt),    // 왼벽
+    Bodies.rectangle(w+T/2, h/2, T, h+T*2, opt),   // 오른벽
+  ];
+  Composite.add(engine.world, walls);
+}
+
+function addBodyForItem(item, dropIn=false){
+  const { w, h } = boxSize();
+  const url = URL.createObjectURL(item.blob);
+  const scale = 1; // 저장 시 이미 리사이즈됨
+  const bw = item.w*scale, bh = item.h*scale;
+  const x = dropIn ? w/2 + (Math.random()*60-30) : 40+Math.random()*(w-80);
+  const y = dropIn ? bh/2+6 : 40+Math.random()*(h*0.5);
+  const body = Bodies.rectangle(x, y, bw*0.92, bh*0.92, {
+    restitution:0.35, friction:0.35, frictionAir:0.012, density:0.0016,
+    angle:(Math.random()-0.5)*0.6,
+    render:{ sprite:{ texture:url, xScale:scale, yScale:scale } }
+  });
+  body.dbId = item.id;
+  bodiesById.set(item.id, body);
+  Composite.add(engine.world, body);
+  if(dropIn) Body.setVelocity(body,{x:(Math.random()-0.5)*2, y:2});
+  updateCount();
+}
+
+function removeItem(body){
+  Composite.remove(engine.world, body);
+  bodiesById.delete(body.dbId);
+  dbDel(body.dbId);
+  updateCount();
+  toast('상자에서 뺐어 🗑️');
+}
+
+function updateCount(){
+  const n = bodiesById.size;
+  $('#count').textContent = n ? `${n}개` : '';
+  emptyEl.style.display = n ? 'none' : 'flex';
+}
+
+/* ---------------- 이미지 처리 ---------------- */
+let removeBackgroundFn = null, modelReady = false;
+
+async function loadModel(){
+  if(removeBackgroundFn) return removeBackgroundFn;
+  ovSub.textContent = '처음 한 번만 AI 모델을 내려받아 (이후엔 캐시돼서 빨라짐)';
+  const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm');
+  removeBackgroundFn = mod.removeBackground;
+  return removeBackgroundFn;
+}
+
+// 투명 여백 잘라내고 MAX_SPRITE 이하로 리사이즈 → {blob,w,h}
+async function cropAndResize(blob){
+  const img = await createImageBitmap(blob);
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img,0,0);
+  const d = ctx.getImageData(0,0,c.width,c.height).data;
+  let minX=c.width, minY=c.height, maxX=0, maxY=0;
+  for(let y=0;y<c.height;y++){
+    for(let x=0;x<c.width;x++){
+      if(d[(y*c.width+x)*4+3] > 12){
+        if(x<minX)minX=x; if(x>maxX)maxX=x;
+        if(y<minY)minY=y; if(y>maxY)maxY=y;
+      }
+    }
+  }
+  if(maxX<=minX || maxY<=minY) throw new Error('empty');
+  const pad=4;
+  minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad);
+  maxX=Math.min(c.width,maxX+pad); maxY=Math.min(c.height,maxY+pad);
+  const cw=maxX-minX, ch=maxY-minY;
+  const s = Math.min(1, MAX_SPRITE/Math.max(cw,ch));
+  const out = document.createElement('canvas');
+  out.width = Math.round(cw*s); out.height = Math.round(ch*s);
+  out.getContext('2d').drawImage(c, minX,minY,cw,ch, 0,0,out.width,out.height);
+  const outBlob = await new Promise(r=>out.toBlob(r,'image/png'));
+  return { blob:outBlob, w:out.width, h:out.height };
+}
+
+async function handleFile(file){
+  overlay.classList.add('show');
+  ovImg.style.display='none'; ovBar.style.width='4%';
+  ovMsg.textContent = modelReady ? '배경 지우는 중…' : 'AI 모델 준비 중…';
+  try{
+    const rb = await loadModel();
+    const resultBlob = await rb(file, {
+      publicPath:'https://cdn.jsdelivr.net/npm/@imgly/background-removal-data@1.5.5/dist/',
+      model:'isnet_fp16',
+      progress:(key,cur,tot)=>{
+        if(key.startsWith('fetch')){
+          ovMsg.textContent='AI 모델 내려받는 중…';
+          ovBar.style.width = Math.round(cur/tot*70)+'%';
+        }else{
+          modelReady = true; ovSub.textContent='';
+          ovMsg.textContent='배경 지우는 중…';
+          ovBar.style.width = (70+Math.round(cur/tot*25))+'%';
+        }
+      }
+    });
+    modelReady = true; ovSub.textContent='';
+    ovBar.style.width='96%'; ovMsg.textContent='다듬는 중…';
+    const item = await cropAndResize(resultBlob);
+
+    // 결과 미리보기 잠깐
+    ovImg.src = URL.createObjectURL(item.blob);
+    ovImg.style.display='block';
+    ovMsg.textContent='상자에 넣는 중!'; ovBar.style.width='100%';
+
+    item.ts = Date.now();
+    item.id = await dbAdd({ blob:item.blob, w:item.w, h:item.h, ts:item.ts });
+    setTimeout(()=>{
+      overlay.classList.remove('show');
+      addBodyForItem(item, true);
+      toast('상자에 담았어 ✅');
+    }, 650);
+  }catch(err){
+    console.error(err);
+    overlay.classList.remove('show');
+    toast(err.message==='empty' ? '사물을 못 찾았어, 다시 찍어봐' : '처리 실패… 네트워크 확인해줘');
+  }
+}
+
+/* ---------------- 흔들기 ---------------- */
+let motionOn = false, lastShakeApply = 0;
+
+function onMotion(e){
+  const a = e.acceleration;
+  if(!a || a.x==null) return;
+  const mag = Math.hypot(a.x, a.y, a.z||0);
+  const now = performance.now();
+  if(mag > 4 && now - lastShakeApply > 40){   // 임계값: 살짝만 흔들어도 반응
+    lastShakeApply = now;
+    const k = Math.min(mag, 40) * 0.00045;
+    for(const body of bodiesById.values()){
+      Body.applyForce(body, body.position, {
+        x: (-a.x*k + (Math.random()-0.5)*k*6) * body.mass,
+        y: ( a.y*k + (Math.random()-0.5)*k*6 - k*2) * body.mass
+      });
+      Body.setAngularVelocity(body, body.angularVelocity + (Math.random()-0.5)*0.25);
+    }
+  }
+}
+
+async function enableMotion(){
+  if(motionOn){ // 데스크톱/토글: 수동 흔들기
+    manualShake(); return;
+  }
+  try{
+    if(typeof DeviceMotionEvent !== 'undefined' &&
+       typeof DeviceMotionEvent.requestPermission === 'function'){
+      const p = await DeviceMotionEvent.requestPermission(); // iOS
+      if(p !== 'granted'){ toast('동작 권한이 거부됐어'); return; }
+    }
+    window.addEventListener('devicemotion', onMotion);
+    motionOn = true;
+    $('#btnShake').classList.add('on');
+    $('#shakeLabel').textContent = '흔들기 ON';
+    $('#hint').textContent = '폰을 흔들어봐!';
+    toast('이제 폰을 흔들면 상자가 흔들려 🫨');
+  }catch(err){
+    toast('이 기기에선 동작 센서를 못 써');
+  }
+}
+
+function manualShake(){ // 버튼 재탭 or 센서 없는 환경
+  for(const body of bodiesById.values()){
+    Body.applyForce(body, body.position, {
+      x:(Math.random()-0.5)*0.05*body.mass,
+      y:(-Math.random()*0.06-0.02)*body.mass
+    });
+    Body.setAngularVelocity(body,(Math.random()-0.5)*0.4);
+  }
+}
+
+/* ---------------- 비우기 모드 ---------------- */
+let trashMode = false;
+$('#btnTrash').addEventListener('click', ()=>{
+  trashMode = !trashMode;
+  $('#btnTrash').classList.toggle('danger-on', trashMode);
+  $('#hint').textContent = trashMode ? '뺄 물건을 탭해' : (motionOn?'폰을 흔들어봐!':'');
+  if(trashMode) toast('빼고 싶은 물건을 탭해');
+});
+
+/* ---------------- 초기화 ---------------- */
+$('#btnAdd').addEventListener('click', ()=> $('#fileIn').click());
+$('#fileIn').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  e.target.value='';
+  if(f) handleFile(f);
+});
+$('#btnShake').addEventListener('click', enableMotion);
+
+window.addEventListener('resize', ()=>{
+  if(!render) return;
+  const { w, h } = boxSize();
+  render.bounds.max.x = w; render.bounds.max.y = h;
+  render.options.width = w; render.options.height = h;
+  render.canvas.width = w*render.options.pixelRatio;
+  render.canvas.height = h*render.options.pixelRatio;
+  render.canvas.style.width = w+'px'; render.canvas.style.height = h+'px';
+  Render.setPixelRatio(render, render.options.pixelRatio);
+  buildWalls();
+});
+
+(async function init(){
+  setupRender();
+  buildWalls();
+  const items = await dbAll();
+  items.forEach(it=>addBodyForItem(it,false));
+  updateCount();
+})();
+</script>
+</body>
+</html>
