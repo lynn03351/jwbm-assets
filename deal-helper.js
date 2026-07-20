@@ -74,6 +74,16 @@
   .calc-hint{font-size:11px;color:#1f4a30;margin-top:3px;font-weight:600;min-height:14px}
   .setting-inline{display:flex;align-items:center;gap:8px;font-size:12px;color:#6b7a72}
   .setting-inline input{width:52px;padding:4px 6px;border:1px solid #e3e1d9;border-radius:5px;text-align:center}
+  .opt-stock-row{display:grid;grid-template-columns:1fr 86px;gap:8px;align-items:center;margin-bottom:6px}
+  .opt-stock-row .oname{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .opt-stock-row input{padding:6px 8px;border:1px solid #e3e1d9;border-radius:6px;font-size:13px;width:100%;font-family:inherit}
+  .opt-stock-row input:focus{outline:2px solid #2f6b45;outline-offset:-1px}
+  .create-btn{width:100%;padding:11px;border:none;border-radius:8px;background:#b8860b;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:2px;font-family:inherit}
+  .create-btn:hover{filter:brightness(.93)}
+  .create-btn:disabled{opacity:.5;cursor:wait}
+  #createMsg.ok{color:#1f4a30;font-weight:700}
+  #createMsg.err{color:#c0392b;font-weight:700}
+  .field input[type=file]{width:100%;font-size:12px;padding:6px;border:1px dashed #cfd8d1;border-radius:6px;background:#fbfaf7}
 
   /* 본링크 현황 */
   .src-card{border:1px solid #e3e1d9;border-radius:8px;background:#fbfaf7;padding:10px 12px;margin-bottom:12px;font-size:12.5px;display:none}
@@ -147,7 +157,7 @@
         </div>
 
         <div class="field">
-          <label>카테고리 (태그용)</label>
+          <label>한정특가 태그 <span style="font-weight:400">(숨김상품 카테고리는 별개)</span></label>
           <div class="seg" id="catSeg">
             <button type="button" data-cat="농수산물" class="on">한정특가 - 농수산물</button>
             <button type="button" data-cat="가공식품">한정특가 - 가공식품</button>
@@ -160,9 +170,9 @@
         </div>
 
         <div class="field">
-          <label>캐치프레이즈</label>
-          <input type="text" id="catch" placeholder="퍽퍽함 제로! 육즙 가득한 듀록">
-          <div class="hint">고지문 제목·변경 상품명에 들어감</div>
+          <label>상품명 변경 (고지문·복사본용)</label>
+          <input type="text" id="nameNew" placeholder="불러오면 자동 입력">
+          <div class="hint">수정하면 고지문의 "상품명 변경" 내용만 바뀜 · [N개 한정] 접두어는 자동 부착</div>
         </div>
 
         <div class="row2">
@@ -204,16 +214,32 @@
           </div>
         </div>
 
+        <div class="field" id="optStockField" style="display:none">
+          <label>옵션별 재고 세팅 (복사본에 넣을 수량)</label>
+          <div id="optStockWrap"></div>
+        </div>
+
         <div class="row2">
-          <div class="field"><label>재고 세팅 (자유 입력)</label>
+          <div class="field"><label>재고 세팅 표기 (비고란)</label>
             <input type="text" id="stockSetting" placeholder="10개씩 세팅 / 5,5,10개 세팅">
-            <div class="hint">시트 비고란에 그대로 들어감</div>
+            <div class="hint">옵션별 입력 시 자동 생성 · 직접 수정 가능</div>
           </div>
-          <div class="field"><label>등록 재고 수량</label>
+          <div class="field"><label>등록 재고 수량 (합계)</label>
             <input type="number" id="stockQty">
-            <div class="hint">고지문 "재고 변경" 항목</div>
+            <div class="hint">옵션별 재고 합이 자동 입력 · 고지문 "재고 변경"</div>
           </div>
         </div>
+
+        <hr class="divider">
+
+        <div class="field">
+          <label>복사본 썸네일 (선택 시 자동 첨부)</label>
+          <input type="file" id="thumbFile" accept="image/*">
+          <div class="hint" id="thumbInfo">복사본 수정 페이지의 대표이미지에 자동으로 들어감</div>
+        </div>
+
+        <button class="create-btn" id="createCopyBtn">⚙️ 복사본 생성 + 자동 입력</button>
+        <div class="hint" id="createMsg" style="min-height:16px;margin-top:5px"></div>
 
         <hr class="divider">
         <div class="setting-inline">
@@ -268,13 +294,13 @@
   const fmt = n => n == null || isNaN(n) ? '' : Number(n).toLocaleString('ko-KR');
   const shortDate = iso => { if (!iso) return ''; const a = iso.split('-'); return a[0].slice(2) + '.' + a[1] + '.' + a[2]; };
 
-  const formIds = ['seller','pname','catch','codeMain','codeCopy','dStart','dEnd',
+  const formIds = ['seller','pname','nameNew','codeMain','codeCopy','dStart','dEnd',
     'rateBefore','rateAfter','priceBefore','priceAfter','limitNum','limitUnit',
     'stockSetting','stockQty','hiddenCols'];
 
   function getData() {
     return {
-      seller: $('seller').value.trim(), pname: $('pname').value.trim(), catch: $('catch').value.trim(),
+      seller: $('seller').value.trim(), pname: $('pname').value.trim(), nameNew: $('nameNew').value.trim(),
       codeMain: $('codeMain').value.trim(), codeCopy: $('codeCopy').value.trim(),
       dStart: $('dStart').value, dEnd: $('dEnd').value,
       rateB: num($('rateBefore').value), rateA: num($('rateAfter').value),
@@ -315,7 +341,8 @@
       srcData = {
         code, name: V('mg_name'), seller, price, displayPrice: disp,
         rate: (price && disp) ? Math.round((1 - price / disp) * 100) : null,
-        stock: P(V('mg_stock_num')), options: opts, memo: V('mg_memo')
+        stock: P(V('mg_stock_num')), options: opts, memo: V('mg_memo'),
+        categories: V('selected_categories')
       };
       applySrc(srcData);
       msg.className = 'ok';
@@ -328,12 +355,14 @@
   function applySrc(d) {
     const m = (d.seller || '').match(/^[^(]+/);
     if (m) $('seller').value = m[0].trim();
-    if (d.name) $('pname').value = d.name.replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim();
+    const stripped = d.name ? d.name.replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim() : '';
+    if (stripped) { $('pname').value = stripped; $('nameNew').value = stripped; }
     $('codeMain').value = d.code || '';
     if (d.displayPrice != null) $('priceBefore').value = d.displayPrice;
     if (d.rate != null) $('rateBefore').value = d.rate;
     renderSrcCard(d);
-    updateRateCalc();
+    renderOptStocks(d);
+    setHint('');
     noticeEdited = false;
     renderAll();
   }
@@ -345,7 +374,8 @@
       '<span>판매가 <b>' + fmt(d.price) + '원</b></span>' +
       '<span>이전판매가 <b>' + fmt(d.displayPrice) + '원</b></span>' +
       '<span>할인율 <b>' + (d.rate == null ? '-' : d.rate) + '%</b></span>' +
-      '<span>총재고 <b>' + fmt(d.stock) + '</b></span>';
+      '<span>총재고 <b>' + fmt(d.stock) + '</b></span>' +
+      '<span>카테고리 idx <b>' + (d.categories || '-') + '</b></span>';
     const opts = d.options || [];
     $('srcOptTable').innerHTML = opts.length
       ? '<tr><th>옵션</th><th>옵션가</th><th>재고</th><th>공급가</th></tr>' +
@@ -355,13 +385,58 @@
     $('srcCard').classList.add('show');
   }
 
-  function updateRateCalc() {
-    const hint = $('rateCalcHint');
+  const round100 = v => Math.round(v / 100) * 100;
+  function setHint(t) { $('rateCalcHint').textContent = t; }
+
+  // 가격 후 입력 → 할인율 후 자동 계산
+  function priceToRate() {
     const pA = num($('priceAfter').value);
-    if (!srcData || srcData.price == null || pA == null || pA <= 0) { hint.textContent = ''; return; }
+    if (!srcData || srcData.price == null || pA == null || pA <= 0) { setHint(''); renderAll(); return; }
     const r = Math.round((1 - srcData.price / pA) * 100);
-    hint.textContent = '판매가 ' + fmt(srcData.price) + '원 유지 기준 → 할인율 ' + r + '%';
-    if ($('rateAfter').value === '') $('rateAfter').value = r;
+    $('rateAfter').value = r;
+    setHint('판매가 ' + fmt(srcData.price) + '원 유지 기준 → 할인율 ' + r + '%');
+    renderAll();
+  }
+  // 할인율 후 입력 → 이전판매가 후 자동 계산 (100원 단위 반올림)
+  function rateToPrice() {
+    const r = num($('rateAfter').value);
+    if (!srcData || srcData.price == null || r == null || r <= 0 || r >= 100) { setHint(''); renderAll(); return; }
+    const p = round100(srcData.price / (1 - r / 100));
+    $('priceAfter').value = p;
+    setHint('할인율 ' + r + '% → 이전판매가 ' + fmt(p) + '원 (판매가 ' + fmt(srcData.price) + '원 유지)');
+    renderAll();
+  }
+
+  /* ---------------- 옵션별 재고 세팅 ---------------- */
+  let optStocks = [];
+  function renderOptStocks(d) {
+    const wrap = $('optStockWrap'), field = $('optStockField');
+    const opts = (d && d.options) || [];
+    optStocks = new Array(opts.length).fill(null);
+    if (!opts.length) { field.style.display = 'none'; wrap.innerHTML = ''; return; }
+    field.style.display = '';
+    wrap.innerHTML = '';
+    opts.forEach((o, i) => {
+      const row = document.createElement('div');
+      row.className = 'opt-stock-row';
+      row.innerHTML = '<div class="oname" title="' + o.name.replace(/"/g, '&quot;') + '">' + o.name + '</div>' +
+        '<input type="number" placeholder="0">';
+      row.querySelector('input').addEventListener('input', e => {
+        optStocks[i] = num(e.target.value);
+        syncOptStocks();
+      });
+      wrap.appendChild(row);
+    });
+  }
+  function syncOptStocks() {
+    const vals = optStocks.filter(v => v != null);
+    if (vals.length) {
+      $('stockQty').value = vals.reduce((a, b) => a + b, 0);
+      const allSame = vals.length > 1 && vals.every(v => v === vals[0]);
+      $('stockSetting').value = allSame ? vals[0] + '개씩 세팅' : vals.join(',') + '개 세팅';
+    }
+    noticeEdited = false;
+    renderAll();
   }
 
   /* ---------------- 생성 로직 ---------------- */
@@ -377,14 +452,13 @@
     return lines.join('\n');
   }
   const limitTag = d => d.limitNum != null ? '[' + fmt(d.limitNum) + d.limitUnit + ' 한정]' : '';
-  const fullName = d => [d.catch, d.pname].filter(Boolean).join(' ');
   const sheetName = d => [d.pname, d.seller].filter(Boolean).join(' - ');
 
   function buildNotice(d) {
-    return (d.seller || '셀러명') + ' - ' + (fullName(d) || '상품명') + '\n\n' +
+    return (d.seller || '셀러명') + ' - ' + (d.pname || '상품명') + '\n\n' +
       '앱 한정특가 진행으로 상품 복사 후 본링크 숨김처리했습니다.\n' +
       '상품명, 이전판매가, 썸네일, 재고 변경 했습니다.\n\n' +
-      '▶ 상품명 변경\n> ' + limitTag(d) + fullName(d) + '\n\n' +
+      '▶ 상품명 변경\n> ' + limitTag(d) + (d.nameNew || '?') + '\n\n' +
       '▶ 이전판매가 변경\n' + (fmt(d.priceB) || '?') + ' > ' + (fmt(d.priceA) || '?') + '\n\n' +
       '▶ 썸네일 변경\n' + (d.rateA == null ? '?' : d.rateA) + '% 할인율 기입\n\n' +
       '▶ 재고 변경\n' + (d.stockQty == null ? '?' : fmt(d.stockQty)) + '개';
@@ -398,7 +472,7 @@
       '복사본에 <b>숨김상품 카테고리</b> 추가 <span class="dim">(자생형 CRM 선별 제외)</span>',
       '태그 추가: ' + c('한정특가 - ' + category),
       '복사본 상품코드를 시트 <b>E열</b> + 위 <b>복사본 코드 칸</b>에 입력',
-      '상품명 변경 → ' + c(limitTag(d) + fullName(d)),
+      '상품명 변경 → ' + c(limitTag(d) + (d.nameNew || '')),
       '이전판매가 변경 ' + c((fmt(d.priceB) || '?') + ' > ' + (fmt(d.priceA) || '?')),
       '재고 변경 ' + c(d.stockQty == null ? '?' : fmt(d.stockQty) + '개') + ' <span class="dim">/ ' + (d.stockSetting || '세팅 방식 미입력') + '</span>',
       '게시기간 설정 ' + c((shortDate(d.dStart) || '?') + ' ~ ' + (shortDate(d.dEnd) || '?')),
@@ -454,13 +528,169 @@
     $('openCopy').style.display = d.codeCopy ? 'inline' : 'none';
   }
 
+  /* ---------------- 복사본 생성 + 자동 입력 ---------------- */
+  let thumbFile = null;
+
+  function setCreateMsg(t, cls) { const m = $('createMsg'); m.textContent = t; m.className = 'hint' + (cls ? ' ' + cls : ''); m.id = 'createMsg'; }
+
+  async function createCopy() {
+    const d = getData();
+    if (!srcData || !d.codeMain) { setCreateMsg('✗ 먼저 본링크를 불러와줘', 'err'); return; }
+    const missing = [];
+    if (!d.nameNew) missing.push('상품명 변경');
+    if (d.priceA == null) missing.push('이전판매가 후');
+    if (!d.dStart || !d.dEnd) missing.push('게시기간');
+    if (d.stockQty == null) missing.push('재고 수량');
+    if (missing.length) { setCreateMsg('✗ 입력 필요: ' + missing.join(', '), 'err'); return; }
+
+    const summary = '복사본을 생성하고 자동 입력합니다.\n\n' +
+      '원본: ' + d.codeMain + '\n' +
+      '상품명: ' + limitTag(d) + d.nameNew + '\n' +
+      '이전판매가: ' + fmt(d.priceA) + '원\n' +
+      '게시기간: ' + shortDate(d.dStart) + ' ~ ' + shortDate(d.dEnd) + '\n' +
+      '재고: ' + fmt(d.stockQty) + '개 (보임)\n' +
+      (thumbFile ? '썸네일: ' + thumbFile.name + '\n' : '') +
+      '\n새 탭에서 확인 후 직접 [저장]을 눌러야 반영됩니다.';
+    if (!confirm(summary)) return;
+
+    const btn = $('createCopyBtn');
+    btn.disabled = true; setCreateMsg('복사본 생성 중...');
+    try {
+      const res = await fetch('/Good/CopyGood', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ ori_mg_code: d.codeMain })
+      });
+      if (!res.ok) throw new Error('CopyGood 응답 ' + res.status);
+      const raw = await res.text();
+      const m = raw.match(/SAI\d{6,}/);
+      if (!m) {
+        setCreateMsg('✗ 복사는 됐을 수 있으나 새 코드를 못 찾음 — 목록에서 확인 필요', 'err');
+        alert('CopyGood 응답에서 새 상품코드를 찾지 못했어.\n응답 내용을 그대로 전달해줘:\n\n' + raw.slice(0, 400));
+        return;
+      }
+      const newCode = m[0];
+      $('codeCopy').value = newCode;
+      noticeEdited = false;
+      renderAll();
+      setCreateMsg('✓ 복사본 ' + newCode + ' 생성 — 새 탭에서 자동 입력 중...', 'ok');
+      openAndFill(newCode, d);
+    } catch (e) {
+      setCreateMsg('✗ ' + e.message, 'err');
+    } finally { btn.disabled = false; }
+  }
+
+  function openAndFill(code, d) {
+    const w = window.open('/Good/registration/' + code + '/?modal=Y', '_blank');
+    if (!w) { setCreateMsg('✗ 팝업이 차단됨 — 주소창 오른쪽에서 팝업 허용 후 다시', 'err'); return; }
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries++;
+      if (tries > 50) { clearInterval(timer); setCreateMsg('✗ 새 탭 로딩 대기 초과 — 수동 입력 필요', 'err'); return; }
+      let ready = false;
+      try {
+        ready = w.document && w.document.readyState === 'complete' && w.document.querySelector('[name="mg_name"]');
+      } catch (e) { return; }
+      if (!ready) return;
+      clearInterval(timer);
+      try {
+        fillCopyForm(w, d);
+        setCreateMsg('✓ 복사본 ' + code + ' 자동 입력 완료 — 새 탭에서 카테고리·태그 확인 후 저장', 'ok');
+      } catch (e) {
+        setCreateMsg('✗ 자동 입력 중 오류: ' + e.message, 'err');
+      }
+    }, 400);
+  }
+
+  function fillCopyForm(w, d) {
+    const doc = w.document;
+    const mark = e => { if (e) e.style.outline = '3px solid #2f6b45'; };
+    const set = (name, val) => {
+      const e = doc.querySelector('[name="' + name + '"]');
+      if (!e) return null;
+      e.value = val;
+      e.dispatchEvent(new Event('input', { bubbles: true }));
+      e.dispatchEvent(new Event('change', { bubbles: true }));
+      mark(e); return e;
+    };
+
+    set('mg_name', limitTag(d) + d.nameNew);
+    set('mg_display_price', d.priceA);
+    set('view_start_date', d.dStart);
+    set('view_end_date', d.dEnd);
+    set('mg_stock_num', d.stockQty == null ? '' : d.stockQty);
+
+    // 재고 보임 처리
+    const sv = doc.querySelector('[name="mg_stock_view"]');
+    if (sv && !sv.checked) { sv.click(); mark(sv.closest('label') || sv); }
+
+    // 옵션별 재고
+    if (srcData && srcData.options) {
+      srcData.options.forEach((o, i) => {
+        const v = optStocks[i];
+        if (v == null) return;
+        doc.querySelectorAll('input[name="msov_name1"]').forEach(inp => {
+          if (String(inp.value || '').trim() !== o.name) return;
+          const row = inp.closest('tr') || inp.parentElement;
+          const st = row.querySelector('[name="msov_stock"]');
+          if (st) {
+            st.value = v;
+            st.dispatchEvent(new Event('input', { bubbles: true }));
+            st.dispatchEvent(new Event('change', { bubbles: true }));
+            mark(st);
+          }
+        });
+      });
+    }
+
+    // 메모에 표시 추가
+    const memo = doc.querySelector('[name="mg_memo"]');
+    if (memo && memo.value.indexOf('앱 한정특가') < 0) {
+      memo.value = '* 앱 한정특가 전용\n' + memo.value;
+      memo.dispatchEvent(new Event('change', { bubbles: true }));
+      mark(memo);
+    }
+
+    // 썸네일 첨부
+    if (thumbFile) {
+      try {
+        const fi = doc.querySelector('input[name="mg_img_s"]');
+        if (fi) {
+          const dt = new w.DataTransfer();
+          dt.items.add(thumbFile);
+          fi.files = dt.files;
+          fi.dispatchEvent(new Event('change', { bubbles: true }));
+          mark(fi.closest('div') || fi);
+        }
+      } catch (e) {
+        w.alert('썸네일 자동 첨부 실패 — 수동으로 첨부해줘 (' + e.message + ')');
+      }
+    }
+
+    // 상단 안내 배너
+    const banner = doc.createElement('div');
+    banner.style.cssText = 'position:sticky;top:0;z-index:99999;background:#1f4a30;color:#fff;padding:10px 16px;font-size:14px;font-weight:700;';
+    banner.textContent = '⚡ 도우미 자동 입력 완료 (초록 테두리 항목) — 카테고리(숨김상품)·태그(한정특가 - ' + category + ')는 직접 설정하고 저장하세요';
+    doc.body.prepend(banner);
+    w.focus();
+  }
+
   /* ---------------- 이벤트 ---------------- */
   formIds.forEach(id => $(id).addEventListener('input', () => {
     if (id !== 'hiddenCols') noticeEdited = false;
     renderAll();
   }));
   $('noticeText').addEventListener('input', () => { noticeEdited = true; });
-  $('priceAfter').addEventListener('input', updateRateCalc);
+  $('priceAfter').addEventListener('input', priceToRate);
+  $('rateAfter').addEventListener('input', rateToPrice);
+  $('createCopyBtn').addEventListener('click', createCopy);
+  $('thumbFile').addEventListener('change', e => {
+    thumbFile = e.target.files[0] || null;
+    $('thumbInfo').textContent = thumbFile
+      ? '✓ ' + thumbFile.name + ' (' + Math.round(thumbFile.size / 1024) + 'KB) — 복사본 생성 시 자동 첨부'
+      : '복사본 수정 페이지의 대표이미지에 자동으로 들어감';
+  });
 
   root.querySelectorAll('#catSeg button').forEach(btn => {
     btn.addEventListener('click', () => {
