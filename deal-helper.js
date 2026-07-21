@@ -4,7 +4,7 @@
    - 북마클릿 로더로 실행, Shadow DOM으로 어드민 CSS와 격리
    ============================================================ */
 (function () {
-  var HELPER_VERSION = '1.3';
+  var HELPER_VERSION = '1.4';
   // 같은 버전이면 다시 보여주기만, 다른 버전이면 기존 창 제거 후 재생성
   if (window.__JBK_DEAL_HELPER__) {
     if (window.__JBK_DEAL_HELPER__.version === HELPER_VERSION) { window.__JBK_DEAL_HELPER__.show(); return; }
@@ -500,7 +500,7 @@
       '복사본 상품코드를 시트 <b>E열</b> + 위 <b>복사본 코드 칸</b>에 입력',
       '상품명 변경 → ' + c(limitTag(d) + (d.nameNew || '')),
       '이전판매가 변경 ' + c((fmt(d.priceB) || '?') + ' > ' + (fmt(d.priceA) || '?')),
-      '재고 변경 ' + c(d.stockQty == null ? '?' : fmt(d.stockQty) + '개') + ' <span class="dim">/ ' + (d.stockSetting || '세팅 방식 미입력') + '</span>',
+      '재고 변경 ' + c(d.stockQty == null ? '?' : fmt(d.stockQty) + '개') + ' <span class="dim">/ ' + (d.stockSetting || '세팅 방식 미입력') + ' — 저장 반영 안 되니 직접 입력!</span>',
       '게시기간 설정 ' + c((shortDate(d.dStart) ? shortDate(d.dStart) + ' ' + d.tStart : '?') + ' ~ ' + (shortDate(d.dEnd) ? shortDate(d.dEnd) + ' ' + d.tEnd : '?')),
       '썸네일 교체 — 할인율 ' + c((d.rateA == null ? '?' : d.rateA) + '%') + ' 기입본',
       '옵션 개별재고 <b>보임</b> 설정 <span class="dim">(복사본 생성 시 자동)</span>',
@@ -737,7 +737,7 @@
     banner.textContent = '⚡ 도우미 자동 입력 완료 (초록 테두리)' +
       (cateAdded ? ' · 숨김상품 카테고리 ✓' : ' · ⚠️ 카테고리 자동 추가 실패, 직접 확인') +
       (tagAdded ? ' · 한정특가 - ' + category + ' 태그 ✓' : ' · ⚠️ 태그 자동 체크 실패, 직접 확인') +
-      ' — 내용 확인 후 저장하세요';
+      ' · ⚠️ 옵션 재고는 저장에 반영 안 됨 — 직접 입력 필요! — 확인 후 저장하세요';
     doc.body.prepend(banner);
     w.focus();
   }
