@@ -4,8 +4,12 @@
    - 북마클릿 로더로 실행, Shadow DOM으로 어드민 CSS와 격리
    ============================================================ */
 (function () {
-  // 이미 열려있으면 다시 보여주기만
-  if (window.__JBK_DEAL_HELPER__) { window.__JBK_DEAL_HELPER__.show(); return; }
+  var HELPER_VERSION = '1.3';
+  // 같은 버전이면 다시 보여주기만, 다른 버전이면 기존 창 제거 후 재생성
+  if (window.__JBK_DEAL_HELPER__) {
+    if (window.__JBK_DEAL_HELPER__.version === HELPER_VERSION) { window.__JBK_DEAL_HELPER__.show(); return; }
+    try { window.__JBK_DEAL_HELPER__.destroy(); } catch (e) {}
+  }
 
   const host = document.createElement('div');
   host.id = 'jbk-deal-helper-host';
@@ -60,6 +64,8 @@
   .field input[type=text],.field input[type=number],.field input[type=date]{
     width:100%;padding:7px 10px;border:1px solid #e3e1d9;border-radius:6px;font-size:14px;background:#fff;font-family:inherit;
   }
+  .field select{width:100%;padding:7px 6px;border:1px solid #e3e1d9;border-radius:6px;font-size:13px;background:#fff;font-family:inherit}
+  .field select:focus{outline:2px solid #2f6b45;outline-offset:-1px}
   .field input:focus{outline:2px solid #2f6b45;outline-offset:-1px}
   input.code{font-family:Consolas,monospace;font-size:13px}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -181,9 +187,15 @@
             <span class="open-link" id="openCopy" style="display:none">복사본 수정페이지 열기</span></div>
         </div>
 
-        <div class="row2">
-          <div class="field"><label>시작일</label><input type="date" id="dStart"></div>
-          <div class="field"><label>종료일</label><input type="date" id="dEnd"></div>
+        <div class="field"><label>게시 시작</label>
+          <div style="display:grid;grid-template-columns:1fr 96px;gap:8px">
+            <input type="date" id="dStart" style="min-width:0"><select id="tStart"></select>
+          </div>
+        </div>
+        <div class="field"><label>게시 종료</label>
+          <div style="display:grid;grid-template-columns:1fr 96px;gap:8px">
+            <input type="date" id="dEnd" style="min-width:0"><select id="tEnd"></select>
+          </div>
         </div>
 
         <hr class="divider">
@@ -284,6 +296,8 @@
 
   /* ---------------- 상태/헬퍼 ---------------- */
   const $ = id => root.getElementById(id);
+  const HIDDEN_CATE_IDX = '266'; // TOP > 숨김상품 (복사본 캡처 기준: 160=전체보기, 266=숨김상품)
+  const TAG_IDX = { '농수산물': '370', '가공식품': '380' }; // 한정특가 태그 체크박스 value
   let category = '농수산물';
   let noticeEdited = false;
   let srcData = null;
@@ -294,15 +308,27 @@
   const fmt = n => n == null || isNaN(n) ? '' : Number(n).toLocaleString('ko-KR');
   const shortDate = iso => { if (!iso) return ''; const a = iso.split('-'); return a[0].slice(2) + '.' + a[1] + '.' + a[2]; };
 
-  const formIds = ['seller','pname','nameNew','codeMain','codeCopy','dStart','dEnd',
+  const formIds = ['seller','pname','nameNew','codeMain','codeCopy','dStart','tStart','dEnd','tEnd',
     'rateBefore','rateAfter','priceBefore','priceAfter','limitNum','limitUnit',
     'stockSetting','stockQty','hiddenCols'];
+
+  // 30분 단위 시간 옵션 채우기
+  (function () {
+    const opts = [];
+    for (let h = 0; h < 24; h++) for (const m of ['00', '30'])
+      opts.push('<option>' + String(h).padStart(2, '0') + ':' + m + '</option>');
+    $('tStart').innerHTML = opts.join('');
+    $('tEnd').innerHTML = opts.join('');
+    $('tStart').value = '00:00';
+    $('tEnd').value = '23:30';
+  })();
 
   function getData() {
     return {
       seller: $('seller').value.trim(), pname: $('pname').value.trim(), nameNew: $('nameNew').value.trim(),
       codeMain: $('codeMain').value.trim(), codeCopy: $('codeCopy').value.trim(),
       dStart: $('dStart').value, dEnd: $('dEnd').value,
+      tStart: $('tStart').value, tEnd: $('tEnd').value,
       rateB: num($('rateBefore').value), rateA: num($('rateAfter').value),
       priceB: num($('priceBefore').value), priceA: num($('priceAfter').value),
       limitNum: num($('limitNum').value), limitUnit: $('limitUnit').value.trim(),
@@ -469,15 +495,15 @@
     return [
       '본링크 ' + c(d.codeMain) + ' <b>숨김</b> 처리',
       '본링크 상품 <b>복사</b>',
-      '복사본에 <b>숨김상품 카테고리</b> 추가 <span class="dim">(자생형 CRM 선별 제외)</span>',
-      '태그 추가: ' + c('한정특가 - ' + category),
+      '복사본에 <b>숨김상품 카테고리</b> 추가 <span class="dim">(복사본 생성 시 자동 · CRM 선별 제외)</span>',
+      '태그 추가: ' + c('한정특가 - ' + category) + ' <span class="dim">(복사본 생성 시 자동)</span>',
       '복사본 상품코드를 시트 <b>E열</b> + 위 <b>복사본 코드 칸</b>에 입력',
       '상품명 변경 → ' + c(limitTag(d) + (d.nameNew || '')),
       '이전판매가 변경 ' + c((fmt(d.priceB) || '?') + ' > ' + (fmt(d.priceA) || '?')),
       '재고 변경 ' + c(d.stockQty == null ? '?' : fmt(d.stockQty) + '개') + ' <span class="dim">/ ' + (d.stockSetting || '세팅 방식 미입력') + '</span>',
-      '게시기간 설정 ' + c((shortDate(d.dStart) || '?') + ' ~ ' + (shortDate(d.dEnd) || '?')),
+      '게시기간 설정 ' + c((shortDate(d.dStart) ? shortDate(d.dStart) + ' ' + d.tStart : '?') + ' ~ ' + (shortDate(d.dEnd) ? shortDate(d.dEnd) + ' ' + d.tEnd : '?')),
       '썸네일 교체 — 할인율 ' + c((d.rateA == null ? '?' : d.rateA) + '%') + ' 기입본',
-      '상품재고 <b>보임</b> 처리',
+      '옵션 개별재고 <b>보임</b> 설정 <span class="dim">(복사본 생성 시 자동)</span>',
       '시트에 행 붙여넣기 <span class="dim">(① 복사 버튼)</span>',
       '단톡방 고지 <span class="dim">(② 복사 버튼)</span>'
     ];
@@ -547,7 +573,7 @@
       '원본: ' + d.codeMain + '\n' +
       '상품명: ' + limitTag(d) + d.nameNew + '\n' +
       '이전판매가: ' + fmt(d.priceA) + '원\n' +
-      '게시기간: ' + shortDate(d.dStart) + ' ~ ' + shortDate(d.dEnd) + '\n' +
+      '게시기간: ' + shortDate(d.dStart) + ' ' + d.tStart + ' ~ ' + shortDate(d.dEnd) + ' ' + d.tEnd + '\n' +
       '재고: ' + fmt(d.stockQty) + '개 (보임)\n' +
       (thumbFile ? '썸네일: ' + thumbFile.name + '\n' : '') +
       '\n새 탭에서 확인 후 직접 [저장]을 눌러야 반영됩니다.';
@@ -617,13 +643,19 @@
 
     set('mg_name', limitTag(d) + d.nameNew);
     set('mg_display_price', d.priceA);
-    set('view_start_date', d.dStart);
-    set('view_end_date', d.dEnd);
+    set('view_start_date', d.dStart + ' ' + d.tStart);
+    set('view_end_date', d.dEnd + ' ' + d.tEnd);
     set('mg_stock_num', d.stockQty == null ? '' : d.stockQty);
 
-    // 재고 보임 처리
-    const sv = doc.querySelector('[name="mg_stock_view"]');
-    if (sv && !sv.checked) { sv.click(); mark(sv.closest('label') || sv); }
+    // 개별재고 '보임' 라디오 설정 (옵션 상단)
+    doc.querySelectorAll('input[name="mso_view"][value="Y"]').forEach(r => {
+      if (!r.checked) r.click();
+      mark(r.closest('label') || r.parentElement || r);
+    });
+
+    // 타임세일 노출 ON
+    const ts = doc.querySelector('[name="timesaleYN"]');
+    if (ts && !ts.checked) { ts.click(); mark(ts.closest('label') || ts); }
 
     // 옵션별 재고
     if (srcData && srcData.options) {
@@ -652,6 +684,37 @@
       mark(memo);
     }
 
+    // 숨김상품 카테고리 자동 추가 (hidden input 직접 조작)
+    const sc = doc.getElementById('selected_categories');
+    let cateAdded = false;
+    if (sc) {
+      const vals = String(sc.value || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (vals.indexOf(HIDDEN_CATE_IDX) < 0) {
+        vals.push(HIDDEN_CATE_IDX);
+        sc.value = vals.join(',');
+        cateAdded = true;
+        const ce = doc.getElementById('cate_exist');
+        if (ce) {
+          ce.innerHTML += '<br>TOP &gt; 숨김상품 <b style="color:#2f6b45">(자동 추가됨)</b>';
+          ce.style.display = '';
+          mark(ce.parentElement || ce);
+        }
+        const cn = doc.getElementById('cate_no_exists');
+        if (cn) cn.style.display = 'none';
+      } else {
+        cateAdded = true; // 이미 있음
+      }
+    }
+
+    // 한정특가 태그 자동 체크 (#tagHolders 체크박스)
+    let tagAdded = false;
+    const tagCb = doc.querySelector('#tagHolders input[type="checkbox"][value="' + TAG_IDX[category] + '"]');
+    if (tagCb) {
+      if (!tagCb.checked) tagCb.click();
+      tagAdded = tagCb.checked;
+      if (tagAdded) mark(tagCb.closest('label') || tagCb);
+    }
+
     // 썸네일 첨부
     if (thumbFile) {
       try {
@@ -671,7 +734,10 @@
     // 상단 안내 배너
     const banner = doc.createElement('div');
     banner.style.cssText = 'position:sticky;top:0;z-index:99999;background:#1f4a30;color:#fff;padding:10px 16px;font-size:14px;font-weight:700;';
-    banner.textContent = '⚡ 도우미 자동 입력 완료 (초록 테두리 항목) — 카테고리(숨김상품)·태그(한정특가 - ' + category + ')는 직접 설정하고 저장하세요';
+    banner.textContent = '⚡ 도우미 자동 입력 완료 (초록 테두리)' +
+      (cateAdded ? ' · 숨김상품 카테고리 ✓' : ' · ⚠️ 카테고리 자동 추가 실패, 직접 확인') +
+      (tagAdded ? ' · 한정특가 - ' + category + ' 태그 ✓' : ' · ⚠️ 태그 자동 체크 실패, 직접 확인') +
+      ' — 내용 확인 후 저장하세요';
     doc.body.prepend(banner);
     w.focus();
   }
@@ -730,13 +796,16 @@
   });
 
   /* 닫기/보이기 */
+  const escHandler = e => { if (e.key === 'Escape') api.hide(); };
   const api = {
+    version: HELPER_VERSION,
     show() { host.style.display = ''; },
-    hide() { host.style.display = 'none'; }
+    hide() { host.style.display = 'none'; },
+    destroy() { document.removeEventListener('keydown', escHandler); host.remove(); delete window.__JBK_DEAL_HELPER__; }
   };
   $('closeBtn').addEventListener('click', api.hide);
   $('backdrop').addEventListener('click', api.hide);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') api.hide(); });
+  document.addEventListener('keydown', escHandler);
   window.__JBK_DEAL_HELPER__ = api;
 
   renderAll();
