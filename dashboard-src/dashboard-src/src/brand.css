@@ -1,0 +1,32 @@
+/* 제철밥상 프리미엄 딥그린 브랜드 — Astryx 토큰 오버라이드
+   Astryx의 테마 캐스케이드 방식: 변수만 바꾸면 전 컴포넌트 리스타일 */
+@layer astryx-theme {
+  :root,
+  [data-astryx-theme] {
+    /* 액센트 = 딥그린 */
+    --color-accent: #1c4f3a;
+    --color-accent-muted: #2c6a50;
+    --color-on-accent: #ffffff;
+    --color-text-accent: #1c4f3a;
+    --color-icon-accent: #1c4f3a;
+
+    /* 배경: 살짝 그린이 도는 웜 뉴트럴 */
+    --color-background-body: #f6f5f1;
+
+    /* 타이포: 회의자료 표준 폰트 */
+    --font-family-body: 'Noto Sans KR', -apple-system, sans-serif;
+    --font-family-heading: 'Noto Sans KR', -apple-system, sans-serif;
+  }
+}
+
+/* 채널 색상 (Supabase 4분류와 동일한 코딩) */
+:root {
+  --ch-app: #1c4f3a;      /* APP — 브랜드 딥그린 */
+  --ch-kakao: #e6b422;    /* KAKAO_INAPP — 카카오 옐로우 톤다운 */
+  --ch-mobile: #4d8f7b;   /* MOBILE_WEB — 미드그린 */
+  --ch-pc: #97a3a0;       /* PC_WEB — 그레이그린 */
+}
+
+body {
+  margin: 0;
+}

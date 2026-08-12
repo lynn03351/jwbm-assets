@@ -1,0 +1,25 @@
+global.window = undefined
+import fs from 'fs'
+const S = await import('./src/salesClick.js')
+const html = fs.readFileSync('/mnt/user-data/uploads/response값.txt', 'utf-8')
+const ok = (n, c) => console.log(n, c ? '✓' : '✗!!')
+const p = S.parseSalesClickLive(html, '2026-07-30', '2026-08-06')
+ok('상품 1000개', p.products.length === 1000)
+const merged = S.mergeSalesClick([p])
+ok('날짜 8일', merged.dates.length === 8 && merged.dates[0] === '2026-07-30' && merged.dates[7] === '2026-08-06')
+const M = S.computeClickMetrics(merged)
+const dj = M.rows.find((r) => r.code === 'SAI80429105')
+ok('된장볼 30890/40', dj.clicks === 30890 && dj.orders === 40)
+console.log('된장볼 일별:', dj.daily.map((d) => d.clicks + '/' + d.orders).join(' '))
+const cand = S.limitedDealCandidates(M.rows)
+// 저클릭 꼬리 1000개 추가해도 (2페이지 상황) 후보가 살아있어야 함
+const tail = Array.from({length: 1000}, (_, i) => ({ code: 'T'+i, name: '꼬리'+i, clicks: 3+i%40, orders: 0, cvr: 0, daily: [] }))
+const cand2 = S.limitedDealCandidates([...M.rows, ...tail])
+ok('꼬리 추가에도 후보 유지', cand2.rows.length > 0 && cand2.threshold >= 50)
+console.log('꼬리 포함 시: 후보', cand2.rows.length, '개 · 임계 ≤', cand2.threshold, '· 적격', cand2.eligible)
+console.log('한정특가 후보(1000개 기준):', cand.rows.length, '개 · 임계 ≤', cand.threshold, '클릭')
+cand.rows.slice(0, 5).forEach((r, i) => console.log(` ${i+1}. ${r.name.slice(0, 22)} — 클릭 ${r.clicks} · 주문 ${r.orders} · 전환 ${r.cvr.toFixed(1)}%`))
+// 연도 걸침
+const roll = S.parseSalesClickLive(html.replace(/07-30/g, '12-30'), '2026-12-30', '2027-01-06')
+ok('걸침 보정', roll.products[0].daily[0].date.startsWith('2026-12'))
+process.exit(0)
