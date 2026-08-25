@@ -4,6 +4,7 @@
  * - 상품코드 → 상품명/썸네일 자동 로드
  * - 썸네일 저장: 600x600 JPEG 리사이즈 → GitHub jwbm-assets/ranking/<코드>.jpg 커밋
  *   → jsDelivr 캐시 퍼지 → 썸네일 경로 자동 세팅
+ * v2.1: 위젯 제목(헤더 문구) 입력 필드 추가
  * ========================================================= */
 (function () {
     'use strict';
@@ -23,6 +24,7 @@
     var MAX_SIZE = 600;
     var JPEG_QUALITY = 0.85;
     var PREVIEW_WIDTH = 160;
+    var DEFAULT_WIDGET_TITLE = '오늘의 인기상품 TOP 5';
 
     /* ---------------- 텍스트 측정 (자동 줄바꿈) ---------------- */
     var measureCanvas = document.createElement('canvas');
@@ -75,6 +77,8 @@
         + '#jbRankTool .jbrt-btn-blue{padding:8px 14px;background:#1677ff;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;}'
         + '#jbRankTool .jbrt-btn-gray{padding:8px 14px;background:#999;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;}'
         + '#jbRankTool .jbrt-token-hint{font-size:11px;color:#0958d9;margin-top:6px;}'
+        /* 위젯 제목 */
+        + '#jbRankTool .jbrt-wtitle-card{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}'
         /* 불러오기 */
         + '#jbRankTool .jbrt-import-card{background:#fffbe6;border:1.5px solid #ffe58f;border-radius:12px;padding:16px;margin-bottom:16px;}'
         + '#jbRankTool .jbrt-import-title{font-size:13px;font-weight:700;color:#ad6800;margin-bottom:8px;}'
@@ -138,7 +142,7 @@
     root.innerHTML = ''
         + '<div class="jbrt-wrap">'
         + '  <button class="jbrt-close" id="jbrtClose" title="닫기">X</button>'
-        + '  <h1>제철밥상 인기상품 <span>코드 생성기</span> <small style="font-size:12px;color:#999;">v2.0</small></h1>'
+        + '  <h1>제철밥상 인기상품 <span>코드 생성기</span> <small style="font-size:12px;color:#999;">v2.1</small></h1>'
         + '  <div class="jbrt-token-card">'
         + '    <div class="jbrt-token-head" id="jbrtTokenHead">'
         + '      <div class="jbrt-token-title">GitHub 토큰 설정 (썸네일 저장용)</div>'
@@ -151,6 +155,13 @@
         + '        <button class="jbrt-btn-gray" id="jbrtTokenClear">삭제</button>'
         + '      </div>'
         + '      <div class="jbrt-token-hint">이 브라우저에만 저장돼요(localStorage). 공용 PC에서는 사용 후 삭제 권장.</div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="jbrt-wtitle-card">'
+        + '    <div class="jbrt-field">'
+        + '      <label>위젯 제목 (헤더에 표시되는 문구)</label>'
+        + '      <input type="text" id="jbrtWidgetTitle" placeholder="예: 가공식품 인기상품">'
+        + '      <div class="jbrt-hint">예: 오늘의 인기상품 TOP 5, 가공식품 인기상품, 수산물 인기상품 ...</div>'
         + '    </div>'
         + '  </div>'
         + '  <div class="jbrt-import-card">'
@@ -196,6 +207,16 @@
         refreshTokenState();
     });
     refreshTokenState();
+
+    /* ---------------- 위젯 제목 ---------------- */
+    $('jbrtWidgetTitle').value = DEFAULT_WIDGET_TITLE;
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function getWidgetTitle() {
+        var v = $('jbrtWidgetTitle').value.trim();
+        return escapeHtml(v || DEFAULT_WIDGET_TITLE);
+    }
 
     /* ---------------- 상품 카드 폼 ---------------- */
     var productMeta = {}; // idx -> { imgUrl: 원본 이미지 URL }
@@ -576,6 +597,10 @@
         var doc = new DOMParser().parseFromString(code, 'text/html');
         var items = doc.querySelectorAll('.ranking-item');
         if (items.length === 0) { alert('올바른 코드가 아닌 것 같아요.'); return; }
+        var titleEl = doc.querySelector('.ranking-title');
+        if (titleEl && titleEl.textContent.trim()) {
+            $('jbrtWidgetTitle').value = titleEl.textContent.trim();
+        }
         items.forEach(function (item, i) {
             if (i >= RANKS) return;
             var img = item.querySelector('.product-thumbnail img');
@@ -601,6 +626,7 @@
 
     /* ---------------- 코드 생성 (기존 위젯 코드 그대로) ---------------- */
     function generateCode() {
+        var widgetTitle = getWidgetTitle();
         var ordered = getOrderedValues();
         var badgeClasses = ['gold', 'silver', 'bronze', '', ''];
         var itemsHtml = '';
@@ -628,7 +654,7 @@
             + '<head>\n'
             + '    <meta charset="UTF-8">\n'
             + '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-            + '    <title>오늘의 인기상품 TOP 5</title>\n'
+            + '    <title>' + widgetTitle + '</title>\n'
             + '    <style>\n'
             + '        * { margin: 0; padding: 0; box-sizing: border-box; }\n'
             + '        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }\n'
@@ -696,7 +722,7 @@
             + '<body>\n'
             + '    <div class="ranking-container">\n'
             + '        <div class="ranking-header" id="header">\n'
-            + '            <div class="ranking-title">오늘의 인기상품 TOP 5</div>\n'
+            + '            <div class="ranking-title">' + widgetTitle + '</div>\n'
             + '            <div class="toggle-area">\n'
             + '                <span class="toggle-label" id="toggleLabel">펼쳐보기</span>\n'
             + '                <div class="toggle-button" id="toggleBtn">\n'
