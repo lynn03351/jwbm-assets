@@ -7,6 +7,7 @@
  * v2.1: 위젯 제목(헤더 문구) 입력 필드 추가
  * v2.2: GIF 지원 - GIF는 리사이즈 없이 원본 그대로 <코드>.gif로 저장 (움직임 유지)
  * v2.3: 위젯을 무스크립트(CSS-only) 구조로 개조 - innerHTML 삽입 환경(탭 로더)에서도 동작
+ * v2.4: 토글을 체크박스 → details/summary로 교체 (FLEXG가 input/label 속성을 벗겨내는 문제 대응) + 인라인 스타일 이중 방어
  * ========================================================= */
 (function () {
     'use strict';
@@ -144,7 +145,7 @@
     root.innerHTML = ''
         + '<div class="jbrt-wrap">'
         + '  <button class="jbrt-close" id="jbrtClose" title="닫기">X</button>'
-        + '  <h1>제철밥상 인기상품 <span>코드 생성기</span> <small style="font-size:12px;color:#999;">v2.3</small></h1>'
+        + '  <h1>제철밥상 인기상품 <span>코드 생성기</span> <small style="font-size:12px;color:#999;">v2.4</small></h1>'
         + '  <div class="jbrt-token-card">'
         + '    <div class="jbrt-token-head" id="jbrtTokenHead">'
         + '      <div class="jbrt-token-title">GitHub 토큰 설정 (썸네일 저장용)</div>'
@@ -675,7 +676,6 @@
                 + '                </a>\n';
         });
 
-        var uid = 'rk' + Math.random().toString(36).slice(2, 8);
         var fullCode = '<!DOCTYPE html>\n'
             + '<html lang="ko">\n'
             + '<head>\n'
@@ -686,8 +686,10 @@
             + '        * { margin: 0; padding: 0; box-sizing: border-box; }\n'
             + '        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }\n'
             + '        .ranking-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }\n'
-            + '        .rk-chk { display: none; }\n'
-            + '        .ranking-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: white; border-bottom: 1px solid #e0e0e0; cursor: pointer; user-select: none; gap: 12px; }\n'
+            + '        .rk-dt { border-bottom: 1px solid #e0e0e0; }\n'
+            + '        .rk-dt summary { list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: white; cursor: pointer; user-select: none; gap: 12px; }\n'
+            + '        .rk-dt summary::-webkit-details-marker { display: none; }\n'
+            + '        .rk-dt summary::marker { content: none; }\n'
             + '        .ranking-title { font-size: 16px; font-weight: 800; color: #333; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n'
             + '        .toggle-area { display: flex; align-items: center; gap: 0px; flex-shrink: 0; }\n'
             + '        .toggle-label { font-size: 13px; color: #111; font-weight: 800; }\n'
@@ -719,12 +721,12 @@
             + '            18%  { transform: translateY(0); opacity: 1; }\n'
             + '            20%, 100% { transform: translateY(-176px); opacity: 0; }\n'
             + '        }\n'
-            + '        .rk-chk:checked + .ranking-header .toggle-button { transform: rotate(180deg); }\n'
-            + '        .rk-chk:checked + .ranking-header .lbl-open { display: none; }\n'
-            + '        .rk-chk:checked + .ranking-header .lbl-close { display: inline; }\n'
-            + '        .rk-chk:checked ~ .ranking-content { height: auto; }\n'
-            + '        .rk-chk:checked ~ .ranking-content .ranking-item { position: static; opacity: 1; animation: none; transform: none; }\n'
-            + '        .rk-chk:checked ~ .ranking-content .ranking-item:last-child { padding-bottom: 16px; }\n'
+            + '        .rk-dt[open] .toggle-button { transform: rotate(180deg); }\n'
+            + '        .rk-dt[open] .lbl-open { display: none; }\n'
+            + '        .rk-dt[open] .lbl-close { display: inline; }\n'
+            + '        .rk-dt[open] + .ranking-content { height: auto; }\n'
+            + '        .rk-dt[open] + .ranking-content .ranking-item { position: static; opacity: 1; animation: none; transform: none; }\n'
+            + '        .rk-dt[open] + .ranking-content .ranking-item:last-child { padding-bottom: 16px; }\n'
             + '        @media (min-width: 768px) {\n'
             + '            .ranking-title { font-size: 26px; font-weight: 800; }\n'
             + '            .toggle-label { font-size: 23.4px; }\n'
@@ -744,7 +746,7 @@
             + '            .ranking-content { height: min(38vw + 32px, 176px); }\n'
             + '            .ranking-item-inner { gap: 4vw; }\n'
             + '            .ranking-item { animation-name: rkCycleM; }\n'
-            + '            .rk-chk:checked ~ .ranking-content .ranking-item { animation: none; }\n'
+            + '            .rk-dt[open] + .ranking-content .ranking-item { animation: none; }\n'
             + '            @keyframes rkCycleM {\n'
             + '                0%   { transform: translateY(min(calc(38vw + 32px), 176px)); opacity: 0; }\n'
             + '                2%   { transform: translateY(0); opacity: 1; }\n'
@@ -756,17 +758,18 @@
             + '</head>\n'
             + '<body>\n'
             + '    <div class="ranking-container">\n'
-            + '        <input type="checkbox" class="rk-chk" id="' + uid + '">\n'
-            + '        <label class="ranking-header" for="' + uid + '">\n'
-            + '            <span class="ranking-title">' + widgetTitle + '</span>\n'
-            + '            <span class="toggle-area">\n'
-            + '                <span class="toggle-label lbl-open">펼쳐보기</span>\n'
-            + '                <span class="toggle-label lbl-close">접기</span>\n'
-            + '                <span class="toggle-button">\n'
-            + '                    <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>\n'
+            + '        <details class="rk-dt">\n'
+            + '            <summary class="ranking-header" style="display:flex;justify-content:space-between;align-items:center;list-style:none;cursor:pointer;">\n'
+            + '                <span class="ranking-title">' + widgetTitle + '</span>\n'
+            + '                <span class="toggle-area" style="display:flex;align-items:center;">\n'
+            + '                    <span class="toggle-label lbl-open">펼쳐보기</span>\n'
+            + '                    <span class="toggle-label lbl-close">접기</span>\n'
+            + '                    <span class="toggle-button">\n'
+            + '                        <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>\n'
+            + '                    </span>\n'
             + '                </span>\n'
-            + '            </span>\n'
-            + '        </label>\n'
+            + '            </summary>\n'
+            + '        </details>\n'
             + '        <div class="ranking-content">\n'
             + '            <div class="ranking-slider">\n'
             + itemsHtml
