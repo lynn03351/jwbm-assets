@@ -5,6 +5,7 @@
  * - 썸네일 저장: 600x600 JPEG 리사이즈 → GitHub jwbm-assets/ranking/<코드>.jpg 커밋
  *   → jsDelivr 캐시 퍼지 → 썸네일 경로 자동 세팅
  * v2.1: 위젯 제목(헤더 문구) 입력 필드 추가
+ * v2.2: GIF 지원 - GIF는 리사이즈 없이 원본 그대로 <코드>.gif로 저장 (움직임 유지)
  * ========================================================= */
 (function () {
     'use strict';
@@ -142,7 +143,7 @@
     root.innerHTML = ''
         + '<div class="jbrt-wrap">'
         + '  <button class="jbrt-close" id="jbrtClose" title="닫기">X</button>'
-        + '  <h1>제철밥상 인기상품 <span>코드 생성기</span> <small style="font-size:12px;color:#999;">v2.1</small></h1>'
+        + '  <h1>제철밥상 인기상품 <span>코드 생성기</span> <small style="font-size:12px;color:#999;">v2.2</small></h1>'
         + '  <div class="jbrt-token-card">'
         + '    <div class="jbrt-token-head" id="jbrtTokenHead">'
         + '      <div class="jbrt-token-title">GitHub 토큰 설정 (썸네일 저장용)</div>'
@@ -409,6 +410,15 @@
     }
 
     /* ---------------- 이미지 리사이즈 ---------------- */
+    function blobToDataUrl(blob) {
+        return new Promise(function (resolve, reject) {
+            var fr = new FileReader();
+            fr.onload = function () { resolve(fr.result); };
+            fr.onerror = function () { reject(new Error('파일 읽기 실패')); };
+            fr.readAsDataURL(blob);
+        });
+    }
+
     function loadImageFromBlob(blob) {
         return new Promise(function (resolve, reject) {
             var url = URL.createObjectURL(blob);
@@ -492,8 +502,9 @@
 
         var btn = $('jbrtSaveBtn' + i);
         btn.disabled = true;
-        var ghPath = GH_DIR + '/' + code + '.jpg';
+        var ghPath = null;
         var dataUrl = null;
+        var gifNote = '';
 
         setStatus(i, '이미지 가져오는 중...', 'busy');
         fetch(meta.imgUrl, { credentials: 'same-origin' })
@@ -509,10 +520,24 @@
                 if (!res.ok) throw new Error('이미지 다운로드 실패 (' + res.status + ')');
                 return res.blob();
             })
-            .then(loadImageFromBlob)
-            .then(function (img) {
-                setStatus(i, '리사이즈 중...', 'busy');
-                dataUrl = squareResize(img);
+            .then(function (blob) {
+                var isGif = blob.type === 'image/gif' || /\.gif(\?|$)/i.test(meta.imgUrl);
+                if (isGif) {
+                    // GIF는 리사이즈하면 움직임이 사라지므로 원본 그대로 업로드
+                    if (blob.size > 20 * 1024 * 1024) throw new Error('GIF가 20MB를 넘어요. 용량을 줄인 파일을 직접 올려주세요.');
+                    if (blob.size > 3 * 1024 * 1024) gifNote = ' / 주의: GIF ' + (blob.size / 1024 / 1024).toFixed(1) + 'MB - 위젯 로딩이 느릴 수 있어요';
+                    ghPath = GH_DIR + '/' + code + '.gif';
+                    setStatus(i, 'GIF 원본 그대로 업로드 준비 중 (움직임 유지)...', 'busy');
+                    return blobToDataUrl(blob);
+                }
+                ghPath = GH_DIR + '/' + code + '.jpg';
+                return loadImageFromBlob(blob).then(function (img) {
+                    setStatus(i, '리사이즈 중...', 'busy');
+                    return squareResize(img);
+                });
+            })
+            .then(function (du) {
+                dataUrl = du;
                 var base64 = dataUrl.split(',')[1];
                 setStatus(i, 'GitHub 업로드 중...', 'busy');
                 return ghGetSha(ghPath).then(function (sha) {
@@ -529,7 +554,7 @@
                 var img = $('jbrtPrevImg' + i);
                 img.src = dataUrl; // 캐시와 무관하게 방금 만든 이미지로 미리보기
                 img.style.display = 'block';
-                setStatus(i, '저장 완료: ' + ghPath + ' (경로 자동 입력됨)', 'ok');
+                setStatus(i, '저장 완료: ' + ghPath + ' (경로 자동 입력됨)' + gifNote, 'ok');
             })
             .catch(function (err) {
                 setStatus(i, '저장 실패: ' + err.message, 'err');
@@ -737,14 +762,11 @@
             + '        </div>\n'
             + '    </div>\n'
             + '    <scr' + 'ipt>\n'
-            + '    (function () {  /* 다중 인스턴스 안전: 전역 오염 없이 자기 컨테이너만 제어 */\n'
-            + '        var _rcs = document.querySelectorAll(\'.ranking-container\');\n'
-            + '        var _rc = _rcs[_rcs.length - 1];  /* 이 스크립트 직전에 파싱된 자기 위젯 */\n'
-            + '        const toggleBtn = _rc.querySelector(\'.toggle-button\') || _rc.querySelector(\'#toggleBtn\');\n'
-            + '        const toggleLabel = _rc.querySelector(\'.toggle-label\') || _rc.querySelector(\'#toggleLabel\');\n'
-            + '        const header = _rc.querySelector(\'.ranking-header\') || _rc.querySelector(\'#header\');\n'
-            + '        const rankingContent = _rc.querySelector(\'.ranking-content\') || _rc.querySelector(\'#rankingContent\');\n'
-            + '        const slider = _rc.querySelector(\'.ranking-slider\') || _rc.querySelector(\'#slider\');\n'
+            + '        const toggleBtn = document.getElementById(\'toggleBtn\');\n'
+            + '        const toggleLabel = document.getElementById(\'toggleLabel\');\n'
+            + '        const header = document.getElementById(\'header\');\n'
+            + '        const rankingContent = document.getElementById(\'rankingContent\');\n'
+            + '        const slider = document.getElementById(\'slider\');\n'
             + '        const items = Array.from(slider.querySelectorAll(\'.ranking-item\'));\n'
             + '        let isExpanded = false, currentIndex = 0, intervalId = null, isAnimating = false;\n'
             + '        function showSlide(index) { items.forEach((item, i) => { item.style.display = i === index ? \'block\' : \'none\'; }); }\n'
@@ -779,7 +801,6 @@
             + '        header.addEventListener(\'click\', toggleRanking);\n'
             + '        window.addEventListener(\'resize\', () => { if (!isExpanded) updateHeight(); });\n'
             + '        startSlider();\n'
-            + '    })();\n'
             + '    </scr' + 'ipt>\n'
             + '</body>\n'
             + '</html>';
