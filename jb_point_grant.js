@@ -5,7 +5,7 @@
    입력: 한 줄에 "회원번호,포인트,메모" (탭/쉼표 구분, 메모 생략 시 공통 메모 사용) */
 (function(){
   'use strict';
-  var VER='2.0', ID='jbPointGrant', DONE_KEY='jbPgDone', CFG_KEY='jbPgSupa', ENDPOINT='/User/pointAddOrMinus';
+  var VER='2.1', ID='jbPointGrant', DONE_KEY='jbPgDone', CFG_KEY='jbPgSupa', ENDPOINT='/User/pointAddOrMinus';
   var DEF_FN='https://tyhpivkqpswdljefffnp.supabase.co/functions/v1/attend';
   if(document.getElementById(ID)){ document.getElementById(ID).style.display='block'; return; }
   if(!window.jbPgTest && location.hostname.indexOf('flexgate.co.kr')<0){ alert('FLEXG 관리자(airgram123.flexgate.co.kr)에서 실행하세요'); return; }
@@ -57,14 +57,18 @@
   '#'+ID+' .supa label{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px}'+
   '#'+ID+' .supa input{flex:1}'+
   '#'+ID+'.m-supa .supa{display:block}'+
-  '#'+ID+'.m-supa textarea{display:none}';
+  '#'+ID+'.m-supa textarea{display:none}'+
+  '#'+ID+'.m-import .supa{display:block}'+
+  '#'+ID+'.m-import .opt,#'+ID+'.m-import .btns{display:none}'+
+  '#'+ID+' .imp{display:none;margin:8px 0}'+
+  '#'+ID+'.m-import .imp{display:flex;gap:8px;align-items:center}';
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
   var box=document.createElement('div'); box.id=ID;
   box.innerHTML=''+
   '<div class="hd"><div><b>포인트 일괄지급</b><small>v'+VER+' · POST '+ENDPOINT+'</small></div><button class="x" title="닫기">&times;</button></div>'+
   '<div class="bd">'+
-  '<div class="tabs"><button id="jbPgTabText" class="on">텍스트 붙여넣기</button><button id="jbPgTabSupa">출석 미지급(Supabase)</button></div>'+
+  '<div class="tabs"><button id="jbPgTabText" class="on">텍스트 붙여넣기</button><button id="jbPgTabSupa">출석 미지급(Supabase)</button><button id="jbPgTabImport">키키 이관</button></div>'+
   '<div class="supa">'+
   '<label>함수 URL <input type="text" id="jbPgFn"></label>'+
   '<label>anon key <input type="text" id="jbPgKey" placeholder="eyJ..."></label>'+
@@ -72,6 +76,7 @@
   '<div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button class="b" id="jbPgLoad">미지급 불러오기</button><span id="jbPgLoadMsg" style="font-size:13px;color:#6b766d"></span></div>'+
   '</div>'+
   '<textarea placeholder="회원번호,포인트,메모   (한 줄에 하나. 메모 생략 시 아래 공통 메모 사용)\n예)\n413432,10,9월 출석체크 포인트(9/1)\n1186621,10"></textarea>'+
+  '<div class="imp"><button class="b go" id="jbPgImport">이관 업로드</button><span id="jbPgImpMsg" style="font-size:13px;color:#6b766d">한 줄에 "회원번호,YYYY-MM-DD,HH:MM:SS,Y|N,비고" (이관_MMDD.csv 내용 그대로). Y=키키가 이미 지급, N=미지급</span></div>'+
   '<div class="opt"><label>공통 메모 <input type="text" id="jbPgMemo" value="출석체크 포인트" size="28"></label>'+
   '<label>간격 <input type="number" id="jbPgDelay" value="250" min="50" step="50">ms</label>'+
   '<label><input type="checkbox" id="jbPgForce"> 완료 기록 무시</label></div>'+
@@ -212,15 +217,44 @@
     try{ var j=await supaCall({action:'mark',items:q}); S.markN=(S.markN||0)+(j.updated||0); }
     catch(e){ S.markQ=q.concat(S.markQ||[]); $('jbPgProg').textContent+=' · Supabase 반영 실패('+e.message+') - 다음 flush에서 재시도'; }
   }
+  function parseImport(){
+    var lines=ta.value.split(/\r?\n/), rows=[], bad=[];
+    for(var i=0;i<lines.length;i++){
+      var raw=lines[i].trim(); if(!raw) continue;
+      var p=raw.split(/\t|,/).map(function(x){ return x.trim().replace(/^"|"$/g,''); });
+      var no=(p[0]||'').replace(/\D/g,''); if(!no){ if(i===0) continue; bad.push(i+1); continue; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(p[1]||'')){ bad.push(i+1); continue; }
+      var t=/^\d{2}:\d{2}(:\d{2})?$/.test(p[2]||'')?p[2]:'00:00:00'; if(t.length===5) t+=':00';
+      rows.push({member_no:no,day:p[1],checked_at:p[1]+'T'+t+'+09:00',granted:/^y/i.test(p[3]||''),source:'kiki',note:p[4]||null});
+    }
+    return {rows:rows,bad:bad};
+  }
+  async function runImport(){
+    var p=parseImport();
+    if(!p.rows.length){ $('jbPgImpMsg').textContent='이관할 줄이 없어요.'+(p.bad.length?' (형식 오류 '+p.bad.length+'줄)':''); return; }
+    var y=p.rows.filter(function(r){ return r.granted; }).length;
+    if(!confirm('이관 '+p.rows.length+'건 (지급완료 '+y+' / 미지급 '+(p.rows.length-y)+')'+(p.bad.length?'\n형식 오류로 제외 '+p.bad.length+'줄: '+p.bad.slice(0,8).join(',')+'':'')+'\n\n같은 회원·날짜가 이미 있으면 건너뜁니다. 업로드할까요?')) return;
+    var ins=0,skip=0,bad=0,bonus=0,B=300;
+    try{
+      for(var i=0;i<p.rows.length;i+=B){
+        $('jbPgImpMsg').textContent='업로드 중 '+Math.min(i+B,p.rows.length)+' / '+p.rows.length;
+        var j=await supaCall({action:'import',rows:p.rows.slice(i,i+B)});
+        ins+=j.inserted||0; skip+=j.skipped||0; bad+=j.bad||0; bonus=j.bonusAwarded||bonus;
+      }
+      $('jbPgImpMsg').textContent='완료 · 등록 '+ins+' / 이미 있음 '+skip+' / 거절 '+bad+(bonus?' / 보너스 적립 '+bonus:'');
+    }catch(e){ $('jbPgImpMsg').textContent='실패: '+e.message+' (등록 '+ins+'건까지 반영됨 - 같은 목록 다시 올리면 이어서 됨)'; }
+  }
   function setMode(m){
-    S.mode=m; box.classList.toggle('m-supa',m==='supa');
-    $('jbPgTabText').classList.toggle('on',m==='text'); $('jbPgTabSupa').classList.toggle('on',m==='supa');
-    $('jbPgPv').textContent=m==='supa'?'[미지급 불러오기]를 누르세요.':'목록을 붙여넣고 [미리보기]를 누르세요.';
+    S.mode=m; box.classList.toggle('m-supa',m==='supa'); box.classList.toggle('m-import',m==='import');
+    $('jbPgTabText').classList.toggle('on',m==='text'); $('jbPgTabSupa').classList.toggle('on',m==='supa'); $('jbPgTabImport').classList.toggle('on',m==='import');
+    $('jbPgPv').textContent=m==='supa'?'[미지급 불러오기]를 누르세요.':m==='import'?'이관 CSV 내용을 붙여넣고 [이관 업로드]를 누르세요.':'목록을 붙여넣고 [미리보기]를 누르세요.';
     $('jbPgRun').disabled=true; $('jbPgOne').disabled=true;
   }
   $('jbPgFn').value=S.cfg.fn||DEF_FN; $('jbPgKey').value=S.cfg.key||''; $('jbPgTok').value=S.cfg.tok||'';
   $('jbPgTabText').onclick=function(){ setMode('text'); };
   $('jbPgTabSupa').onclick=function(){ setMode('supa'); };
+  $('jbPgTabImport').onclick=function(){ setMode('import'); };
+  $('jbPgImport').onclick=runImport;
   $('jbPgLoad').onclick=loadPending;
 
   /* ---------- 버튼 ---------- */
