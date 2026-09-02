@@ -1,18 +1,22 @@
-/* 제철밥상 포인트 일괄지급 툴 v1.0 (관리자 북마클릿)
+/* 제철밥상 포인트 일괄지급 툴 v2.0 (관리자 북마클릿)
+   v2: Supabase(attend 함수) 미지급 불러오기 → 지급 → 결과 반영(mark). 텍스트 붙여넣기 모드도 유지
    실행 위치: airgram123.flexgate.co.kr (관리자 세션 필요)
    엔드포인트: POST /User/pointAddOrMinus  {customerId, pointAmt, mode:'ADD'|'MINUS', memo}
    입력: 한 줄에 "회원번호,포인트,메모" (탭/쉼표 구분, 메모 생략 시 공통 메모 사용) */
 (function(){
   'use strict';
-  var VER='1.0', ID='jbPointGrant', DONE_KEY='jbPgDone', ENDPOINT='/User/pointAddOrMinus';
+  var VER='2.0', ID='jbPointGrant', DONE_KEY='jbPgDone', CFG_KEY='jbPgSupa', ENDPOINT='/User/pointAddOrMinus';
+  var DEF_FN='https://tyhpivkqpswdljefffnp.supabase.co/functions/v1/attend';
   if(document.getElementById(ID)){ document.getElementById(ID).style.display='block'; return; }
   if(!window.jbPgTest && location.hostname.indexOf('flexgate.co.kr')<0){ alert('FLEXG 관리자(airgram123.flexgate.co.kr)에서 실행하세요'); return; }
 
   /* ---------- 상태 ---------- */
-  var S={rows:[], results:[], running:false, stop:false, done:loadDone()};
+  var S={rows:[], results:[], running:false, stop:false, done:loadDone(), cfg:loadCfg(), mode:'text'};
+  function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); }catch(e){ return {}; } }
+  function saveCfg(){ try{ localStorage.setItem(CFG_KEY, JSON.stringify(S.cfg)); }catch(e){} }
   function loadDone(){ try{ return JSON.parse(localStorage.getItem(DONE_KEY)||'{}'); }catch(e){ return {}; } }
   function saveDone(){ try{ localStorage.setItem(DONE_KEY, JSON.stringify(S.done)); }catch(e){} }
-  function doneKey(r){ return r.no+'|'+r.amt+'|'+r.memo; }
+  function doneKey(r){ return r.sid?('supa|'+r.sid):(r.no+'|'+r.amt+'|'+r.memo); }
 
   /* ---------- UI ---------- */
   var css=''+
@@ -45,13 +49,28 @@
   '#'+ID+' th{background:#f3f6f2;position:sticky;top:0}'+
   '#'+ID+' td.ok{color:#2e6b3e}'+
   '#'+ID+' td.ng{color:#b4452f}'+
-  '#'+ID+' .twrap{max-height:220px;overflow:auto;border:1px solid #e3e8e3;border-radius:8px}';
+  '#'+ID+' .twrap{max-height:220px;overflow:auto;border:1px solid #e3e8e3;border-radius:8px}'+
+  '#'+ID+' .tabs{display:flex;gap:6px;margin-bottom:10px}'+
+  '#'+ID+' .tabs button{padding:6px 14px;border:1px solid #cfd6d0;border-radius:20px;background:#fff;cursor:pointer;font:inherit}'+
+  '#'+ID+' .tabs button.on{background:#2e6b3e;color:#fff;border-color:#2e6b3e}'+
+  '#'+ID+' .supa{display:none;background:#f7f9f6;border:1px solid #e3e8e3;border-radius:8px;padding:10px 12px;margin-bottom:10px}'+
+  '#'+ID+' .supa label{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px}'+
+  '#'+ID+' .supa input{flex:1}'+
+  '#'+ID+'.m-supa .supa{display:block}'+
+  '#'+ID+'.m-supa textarea{display:none}';
   var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
   var box=document.createElement('div'); box.id=ID;
   box.innerHTML=''+
   '<div class="hd"><div><b>포인트 일괄지급</b><small>v'+VER+' · POST '+ENDPOINT+'</small></div><button class="x" title="닫기">&times;</button></div>'+
   '<div class="bd">'+
+  '<div class="tabs"><button id="jbPgTabText" class="on">텍스트 붙여넣기</button><button id="jbPgTabSupa">출석 미지급(Supabase)</button></div>'+
+  '<div class="supa">'+
+  '<label>함수 URL <input type="text" id="jbPgFn"></label>'+
+  '<label>anon key <input type="text" id="jbPgKey" placeholder="eyJ..."></label>'+
+  '<label>관리자 토큰 <input type="password" id="jbPgTok" placeholder="ATT_ADMIN_TOKEN"></label>'+
+  '<div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button class="b" id="jbPgLoad">미지급 불러오기</button><span id="jbPgLoadMsg" style="font-size:13px;color:#6b766d"></span></div>'+
+  '</div>'+
   '<textarea placeholder="회원번호,포인트,메모   (한 줄에 하나. 메모 생략 시 아래 공통 메모 사용)\n예)\n413432,10,9월 출석체크 포인트(9/1)\n1186621,10"></textarea>'+
   '<div class="opt"><label>공통 메모 <input type="text" id="jbPgMemo" value="출석체크 포인트" size="28"></label>'+
   '<label>간격 <input type="number" id="jbPgDelay" value="250" min="50" step="50">ms</label>'+
@@ -74,6 +93,7 @@
 
   /* ---------- 파싱 ---------- */
   function parse(){
+    if(S.mode==='supa') return {rows:(S.supaRows||[]).slice(),bad:[]};
     var memoDefault=$('jbPgMemo').value.trim();
     var lines=ta.value.split(/\r?\n/), rows=[], bad=[];
     for(var i=0;i<lines.length;i++){
@@ -100,10 +120,10 @@
       todo.push(r); total+=r.mode==='ADD'?r.amt:-r.amt;
     });
     S.rows=p.rows;
-    var msg='총 '+p.rows.length+'건 · 지급 대상 '+todo.length+'건 · 합계 '+total.toLocaleString()+'P';
+    var msg=(S.mode==='supa'?'[Supabase 미지급] ':'')+'총 '+p.rows.length+'건 · 지급 대상 '+todo.length+'건 · 합계 '+total.toLocaleString()+'P';
     if(same) msg+='\n똑같은 줄 '+same+'개는 한 번만 지급';
     if(skip) msg+='\n이미 완료된 '+skip+'건은 건너뜀 (다시 지급하려면 "완료 기록 무시" 체크)';
-    if(dup.length) msg+='\n<span class="bad">같은 회원번호가 여러 줄: '+uniq(dup).slice(0,10).join(', ')+(dup.length>10?' 외':'')+' - 의도한 건지 확인</span>';
+    if(dup.length&&S.mode!=='supa') msg+='\n<span class="bad">같은 회원번호가 여러 줄: '+uniq(dup).slice(0,10).join(', ')+(dup.length>10?' 외':'')+' - 의도한 건지 확인</span>';
     if(p.bad.length) msg+='\n<span class="bad">무시된 줄 '+p.bad.length+'개:\n'+p.bad.slice(0,5).join('\n')+(p.bad.length>5?'\n…':'')+'</span>';
     $('jbPgPv').innerHTML=msg;
     $('jbPgRun').disabled=!todo.length; $('jbPgOne').disabled=!todo.length;
@@ -141,10 +161,12 @@
       r.ok=res.ok; r.msg=res.msg; r.at=new Date().toISOString().slice(0,19).replace('T',' ');
       if(res.ok){ ok++; S.done[doneKey(r)]=r.at; saveDone(); } else { ng++; }
       S.results.push(r); renderTable();
+      if(r.sid){ S.markQ=(S.markQ||[]); S.markQ.push({table:r.table,id:r.id,ok:res.ok,memo:r.memo,error:res.msg}); if(S.markQ.length>=50) await flushMark(); }
       $('jbPgBar').style.width=Math.round((i+1)/list.length*100)+'%';
       if(i<list.length-1) await sleep(delay);
     }
-    if(!S.stop) $('jbPgProg').textContent='완료 · 성공 '+ok+' / 실패 '+ng+' (총 '+list.length+')';
+    await flushMark();
+    if(!S.stop) $('jbPgProg').textContent='완료 · 성공 '+ok+' / 실패 '+ng+' (총 '+list.length+')'+(S.markN?' · Supabase 반영 '+S.markN+'건':'');
     S.running=false;
     ['jbPgPreview','jbPgOne','jbPgClear'].forEach(function(id){ $(id).disabled=false; });
     $('jbPgStop').disabled=true; $('jbPgCsv').disabled=!S.results.length;
@@ -155,10 +177,51 @@
   function renderTable(){
     var rs=S.results.slice(-300).reverse();
     var h='<table><tr><th>#</th><th>회원번호</th><th>포인트</th><th>메모</th><th>결과</th><th>시각</th></tr>';
-    rs.forEach(function(r){ h+='<tr><td>'+r.line+'</td><td>'+r.no+'</td><td>'+(r.mode==='ADD'?'+':'-')+r.amt+'</td><td>'+esc(r.memo)+'</td><td class="'+(r.ok?'ok':'ng')+'">'+(r.ok?'성공':'실패: '+esc(r.msg))+'</td><td>'+r.at+'</td></tr>'; });
+    rs.forEach(function(r){ h+='<tr><td>'+(r.sid?r.sid:r.line)+'</td><td>'+r.no+'</td><td>'+(r.mode==='ADD'?'+':'-')+r.amt+'</td><td>'+esc(r.memo)+'</td><td class="'+(r.ok?'ok':'ng')+'">'+(r.ok?'성공':'실패: '+esc(r.msg))+'</td><td>'+r.at+'</td></tr>'; });
     $('jbPgTable').innerHTML=h+'</table>';
   }
   function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ---------- Supabase(attend) ---------- */
+  function supaCall(body){
+    var url=$('jbPgFn').value.trim(), key=$('jbPgKey').value.trim(), tok=$('jbPgTok').value.trim();
+    if(!url||!key||!tok) return Promise.reject(new Error('함수 URL·anon key·관리자 토큰을 모두 입력하세요'));
+    S.cfg={fn:url,key:key,tok:tok}; saveCfg();
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+key,'x-admin-token':tok},body:JSON.stringify(body)})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if(!j||!j.ok) throw new Error((j&&j.error)||'응답 오류'); return j; });
+  }
+  function bonusMemo(kind,code){ var m=/days(\d+)/.exec(kind||''); return '출석 '+(m?m[1]:'')+'일 달성 보너스'+(code?'('+code+')':''); }
+  function dayMemo(day){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day||''); return '출석체크 포인트('+(m?parseInt(m[2],10)+'/'+parseInt(m[3],10):day)+')'; }
+  async function loadPending(){
+    $('jbPgLoadMsg').textContent='불러오는 중…';
+    try{
+      var j=await supaCall({action:'pending'});
+      var rows=[];
+      (j.checkins||[]).forEach(function(c){ rows.push({sid:'C'+c.id,table:'checkins',id:c.id,line:'C'+c.id,no:String(c.member_no),amt:c.point_amt,mode:'ADD',memo:dayMemo(c.day),tries:c.grant_tries}); });
+      (j.bonus||[]).forEach(function(b){ rows.push({sid:'B'+b.id,table:'bonus',id:b.id,line:'B'+b.id,no:String(b.member_no),amt:b.point_amt,mode:'ADD',memo:bonusMemo(b.kind,b.event_code),tries:b.grant_tries}); });
+      S.supaRows=rows;
+      var retry=rows.filter(function(r){ return r.tries>0; }).length;
+      $('jbPgLoadMsg').textContent='출석 '+(j.checkins||[]).length+'건 · 보너스 '+(j.bonus||[]).length+'건'+(retry?' (이전 실패 '+retry+'건 포함)':'');
+      preview();
+    }catch(e){ $('jbPgLoadMsg').textContent='실패: '+e.message; }
+  }
+  async function flushMark(){
+    if(!S.markQ||!S.markQ.length) return;
+    var q=S.markQ; S.markQ=[];
+    try{ var j=await supaCall({action:'mark',items:q}); S.markN=(S.markN||0)+(j.updated||0); }
+    catch(e){ S.markQ=q.concat(S.markQ||[]); $('jbPgProg').textContent+=' · Supabase 반영 실패('+e.message+') - 다음 flush에서 재시도'; }
+  }
+  function setMode(m){
+    S.mode=m; box.classList.toggle('m-supa',m==='supa');
+    $('jbPgTabText').classList.toggle('on',m==='text'); $('jbPgTabSupa').classList.toggle('on',m==='supa');
+    $('jbPgPv').textContent=m==='supa'?'[미지급 불러오기]를 누르세요.':'목록을 붙여넣고 [미리보기]를 누르세요.';
+    $('jbPgRun').disabled=true; $('jbPgOne').disabled=true;
+  }
+  $('jbPgFn').value=S.cfg.fn||DEF_FN; $('jbPgKey').value=S.cfg.key||''; $('jbPgTok').value=S.cfg.tok||'';
+  $('jbPgTabText').onclick=function(){ setMode('text'); };
+  $('jbPgTabSupa').onclick=function(){ setMode('supa'); };
+  $('jbPgLoad').onclick=loadPending;
 
   /* ---------- 버튼 ---------- */
   $('jbPgPreview').onclick=preview;
