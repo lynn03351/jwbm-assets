@@ -4,7 +4,7 @@
    - 북마클릿 로더로 실행, Shadow DOM으로 어드민 CSS와 격리
    ============================================================ */
 (function () {
-  var HELPER_VERSION = '1.4';
+  var HELPER_VERSION = '1.5';
   // 같은 버전이면 다시 보여주기만, 다른 버전이면 기존 창 제거 후 재생성
   if (window.__JBK_DEAL_HELPER__) {
     if (window.__JBK_DEAL_HELPER__.version === HELPER_VERSION) { window.__JBK_DEAL_HELPER__.show(); return; }
@@ -296,8 +296,8 @@
 
   /* ---------------- 상태/헬퍼 ---------------- */
   const $ = id => root.getElementById(id);
-  const HIDDEN_CATE_IDX = '266'; // TOP > 숨김상품 (복사본 캡처 기준: 160=전체보기, 266=숨김상품)
-  const TAG_IDX = { '농수산물': '370', '가공식품': '380' }; // 한정특가 태그 체크박스 value
+  const HIDDEN_CATE_IDX = '266'; // TOP > 숨김상품 — 복사본은 이 카테고리 단독 적용
+  const LIMITED_TAG = '380';     // 한정특가 태그 (통합) — 복사본은 이 태그 단독 적용
   let category = '농수산물';
   let noticeEdited = false;
   let srcData = null;
@@ -364,11 +364,14 @@
         opts.push({ name: nm, stock: P(g('msov_stock')), supply: P(g('msov_supply')), price: P(g('msov_price')) });
       });
       const price = P(V('mg_price')), disp = P(V('mg_display_price'));
+      const cbChecked = n => { const e = Q(n); return !!(e && e.checked); };
       srcData = {
         code, name: V('mg_name'), seller, price, displayPrice: disp,
         rate: (price && disp) ? Math.round((1 - price / disp) * 100) : null,
         stock: P(V('mg_stock_num')), options: opts, memo: V('mg_memo'),
-        categories: V('selected_categories')
+        categories: V('selected_categories'),
+        buyJeju: cbChecked('mg_isbuy_adddelivery'),      // 제주 지역 구매 불가
+        buyIsland: cbChecked('mg_isbuy_adddelivery1')    // 도서산간 지역 구매 불가
       };
       applySrc(srcData);
       msg.className = 'ok';
@@ -401,7 +404,8 @@
       '<span>이전판매가 <b>' + fmt(d.displayPrice) + '원</b></span>' +
       '<span>할인율 <b>' + (d.rate == null ? '-' : d.rate) + '%</b></span>' +
       '<span>총재고 <b>' + fmt(d.stock) + '</b></span>' +
-      '<span>카테고리 idx <b>' + (d.categories || '-') + '</b></span>';
+      '<span>카테고리 idx <b>' + (d.categories || '-') + '</b></span>' +
+      '<span>구매제한 <b>' + (d.buyJeju || d.buyIsland ? [d.buyJeju ? '제주' : '', d.buyIsland ? '도서산간' : ''].filter(Boolean).join('·') + ' 불가' : '없음') + '</b></span>';
     const opts = d.options || [];
     $('srcOptTable').innerHTML = opts.length
       ? '<tr><th>옵션</th><th>옵션가</th><th>재고</th><th>공급가</th></tr>' +
@@ -495,8 +499,8 @@
     return [
       '본링크 ' + c(d.codeMain) + ' <b>숨김</b> 처리',
       '본링크 상품 <b>복사</b>',
-      '복사본에 <b>숨김상품 카테고리</b> 추가 <span class="dim">(복사본 생성 시 자동 · CRM 선별 제외)</span>',
-      '태그 추가: ' + c('한정특가 - ' + category) + ' <span class="dim">(복사본 생성 시 자동)</span>',
+      '복사본 카테고리를 <b>숨김상품 단독</b>으로 <span class="dim">(생성 시 자동 · CRM 선별 제외)</span>',
+      '태그: ' + c('한정특가(380) 단독') + ' + 타임세일 ON + 구매제한 복제 <span class="dim">(생성 시 자동)</span>',
       '복사본 상품코드를 시트 <b>E열</b> + 위 <b>복사본 코드 칸</b>에 입력',
       '상품명 변경 → ' + c(limitTag(d) + (d.nameNew || '')),
       '이전판매가 변경 ' + c((fmt(d.priceB) || '?') + ' > ' + (fmt(d.priceA) || '?')),
@@ -640,6 +644,17 @@
       e.dispatchEvent(new Event('change', { bubbles: true }));
       mark(e); return e;
     };
+    // 체크박스 강제 설정: click 시도 후 어긋나면 checked 직접 지정 + 이벤트
+    const forceCheck = (el, want) => {
+      if (!el) return false;
+      if (el.checked !== want) el.click();
+      if (el.checked !== want) {
+        el.checked = want;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      return el.checked === want;
+    };
 
     set('mg_name', limitTag(d) + d.nameNew);
     set('mg_display_price', d.priceA);
@@ -653,11 +668,7 @@
       mark(r.closest('label') || r.parentElement || r);
     });
 
-    // 타임세일 노출 ON
-    const ts = doc.querySelector('[name="timesaleYN"]');
-    if (ts && !ts.checked) { ts.click(); mark(ts.closest('label') || ts); }
-
-    // 옵션별 재고
+    // 옵션별 재고 (참고용 — 저장 반영 안 되므로 직접 재입력 필요)
     if (srcData && srcData.options) {
       srcData.options.forEach((o, i) => {
         const v = optStocks[i];
@@ -676,44 +687,61 @@
       });
     }
 
-    // 메모에 표시 추가
-    const memo = doc.querySelector('[name="mg_memo"]');
-    if (memo && memo.value.indexOf('앱 한정특가') < 0) {
-      memo.value = '* 앱 한정특가 전용\n' + memo.value;
-      memo.dispatchEvent(new Event('change', { bubbles: true }));
-      mark(memo);
-    }
-
-    // 숨김상품 카테고리 자동 추가 (hidden input 직접 조작)
-    const sc = doc.getElementById('selected_categories');
-    let cateAdded = false;
-    if (sc) {
-      const vals = String(sc.value || '').split(',').map(s => s.trim()).filter(Boolean);
-      if (vals.indexOf(HIDDEN_CATE_IDX) < 0) {
-        vals.push(HIDDEN_CATE_IDX);
-        sc.value = vals.join(',');
-        cateAdded = true;
+    // ---- 핵심 설정 (어드민 스크립트가 되돌릴 수 있어 2차·3차 재적용) ----
+    const state = { cate: false, tag: false, timesale: false, buy: false, memo: false };
+    function applyCritical(markIt) {
+      // 1) 카테고리: 숨김상품(266) 단독으로 교체
+      const sc = doc.getElementById('selected_categories');
+      if (sc) {
+        if (sc.value !== HIDDEN_CATE_IDX) sc.value = HIDDEN_CATE_IDX;
+        state.cate = sc.value === HIDDEN_CATE_IDX;
         const ce = doc.getElementById('cate_exist');
-        if (ce) {
-          ce.innerHTML += '<br>TOP &gt; 숨김상품 <b style="color:#2f6b45">(자동 추가됨)</b>';
+        if (ce && markIt) {
+          ce.innerHTML = 'TOP &gt; 숨김상품 <b style="color:#2f6b45">(단독 적용됨)</b>';
           ce.style.display = '';
           mark(ce.parentElement || ce);
         }
         const cn = doc.getElementById('cate_no_exists');
         if (cn) cn.style.display = 'none';
-      } else {
-        cateAdded = true; // 이미 있음
+      }
+      // 2) 태그: 한정특가(380)만 체크, 나머지 전부 해제
+      state.tag = false;
+      doc.querySelectorAll('#tagHolders input[type="checkbox"]').forEach(cb => {
+        const want = cb.value === LIMITED_TAG;
+        forceCheck(cb, want);
+        if (want && cb.checked) {
+          state.tag = true;
+          if (markIt) mark(cb.closest('label') || cb);
+        }
+      });
+      // 3) 타임세일 노출 ON
+      const ts = doc.querySelector('[name="timesaleYN"]');
+      state.timesale = forceCheck(ts, true);
+      if (ts && markIt) mark(ts.closest('label') || ts.parentElement || ts);
+      // 4) 구매제한: 본링크와 동일하게 (제주/도서산간)
+      if (srcData) {
+        const j = doc.querySelector('[name="mg_isbuy_adddelivery"]');
+        const i2 = doc.querySelector('[name="mg_isbuy_adddelivery1"]');
+        const okJ = j ? forceCheck(j, !!srcData.buyJeju) : true;
+        const okI = i2 ? forceCheck(i2, !!srcData.buyIsland) : true;
+        state.buy = okJ && okI;
+        if (markIt) { if (j) mark(j.closest('label') || j.parentElement); if (i2) mark(i2.closest('label') || i2.parentElement); }
+      }
+      // 5) 메모 맨 윗줄 문구
+      const memo = doc.querySelector('[name="mg_memo"]');
+      if (memo) {
+        if (memo.value.indexOf('* 앱 한정특가 전용') < 0) {
+          memo.value = '* 앱 한정특가 전용\n' + memo.value;
+          memo.dispatchEvent(new Event('input', { bubbles: true }));
+          memo.dispatchEvent(new Event('change', { bubbles: true }));
+          if (markIt) mark(memo);
+        }
+        state.memo = memo.value.indexOf('* 앱 한정특가 전용') === 0;
       }
     }
-
-    // 한정특가 태그 자동 체크 (#tagHolders 체크박스)
-    let tagAdded = false;
-    const tagCb = doc.querySelector('#tagHolders input[type="checkbox"][value="' + TAG_IDX[category] + '"]');
-    if (tagCb) {
-      if (!tagCb.checked) tagCb.click();
-      tagAdded = tagCb.checked;
-      if (tagAdded) mark(tagCb.closest('label') || tagCb);
-    }
+    applyCritical(true);
+    setTimeout(() => applyCritical(false), 2000);  // 어드민 초기화 스크립트 대비 재적용
+    setTimeout(() => { applyCritical(false); updateBanner(); }, 4000);
 
     // 썸네일 첨부
     if (thumbFile) {
@@ -734,10 +762,18 @@
     // 상단 안내 배너
     const banner = doc.createElement('div');
     banner.style.cssText = 'position:sticky;top:0;z-index:99999;background:#1f4a30;color:#fff;padding:10px 16px;font-size:14px;font-weight:700;';
-    banner.textContent = '⚡ 도우미 자동 입력 완료 (초록 테두리)' +
-      (cateAdded ? ' · 숨김상품 카테고리 ✓' : ' · ⚠️ 카테고리 자동 추가 실패, 직접 확인') +
-      (tagAdded ? ' · 한정특가 - ' + category + ' 태그 ✓' : ' · ⚠️ 태그 자동 체크 실패, 직접 확인') +
-      ' · ⚠️ 옵션 재고는 저장에 반영 안 됨 — 직접 입력 필요! — 확인 후 저장하세요';
+    function updateBanner() {
+      const ok = [], bad = [];
+      (state.cate ? ok : bad).push('숨김상품 카테고리 단독');
+      (state.tag ? ok : bad).push('한정특가 태그(380) 단독');
+      (state.timesale ? ok : bad).push('타임세일 ON');
+      (state.buy ? ok : bad).push('구매제한 복제');
+      (state.memo ? ok : bad).push('메모 문구');
+      banner.textContent = '⚡ 도우미 자동 입력: ' + ok.join(' · ') + ' ✓' +
+        (bad.length ? '  |  ⚠️ 실패(직접 확인): ' + bad.join(' · ') : '') +
+        '  |  ⚠️ 옵션 재고는 직접 입력 후 저장!';
+    }
+    updateBanner();
     doc.body.prepend(banner);
     w.focus();
   }
