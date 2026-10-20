@@ -30,6 +30,8 @@ import {
   CartesianGrid, LabelList, PieChart, Pie, Cell, Legend, ComposedChart, Line,
 } from 'recharts'
 import { yearFromFilename, parseSalesClick, parseSalesClickLive, mergeSalesClick, computeClickMetrics, limitedDealCandidates } from './salesClick'
+import { CH, parseSummaryList, initChannels } from './channels.js'
+export { CH, initChannels }
 
 /* ══════════════════ FLEXG API (기존 매출기입 도구와 동일 로직) ══════════════════ */
 
@@ -37,36 +39,13 @@ const BASE = 'https://airgram123.flexgate.co.kr'
 const SALES_URL = BASE + '/Account/sales_channel'
 const USER_URL = BASE + '/User/list'
 
-const APP = '240,239,238,233,217,211,210,209,203,202,197,196,195,194,193,178,151,146,145,141,140,139,138,137,134,131,130,128,116,115,114,113,112,111,110,96,92,83,82,81,79,76,74,72,55,54,225,224,223,222,221'
-const DERA = '218,208,207,206,204,199,182,181,174,172,171,170,168,167,163,162,161,160,159,158,157,156,149,148,144,117,93'
-const WATT = '200,192,191,190,189,188'
-const GROUP_A = ['0', APP, DERA, WATT].join(',')
-const GROUP_B = ['0', APP].join(',')
-const ALL_IDXS = ['0', APP, DERA, WATT].join(',')   // 전체 = 채널외 + 앱 + 데라 + 왓트
-
-const CODES = [{"i":"240","n":"APP) 가공육 배너","c":"APP"},{"i":"239","n":"APP) 등급별 할인관","c":"APP"},{"i":"238","n":"APP) 제철맛지도","c":"APP"},{"i":"233","n":"APP) PC 상품추천","c":"APP"},{"i":"232","n":"카카오톡_첫자동메시지","c":"기타"},{"i":"231","n":"당근마켓광고","c":"기타"},{"i":"225","n":"APP)앱푸시-시간대별>APP)앱푸시 1","c":"APP"},{"i":"224","n":"APP)앱푸시-시간대별>APP)앱푸시 2","c":"APP"},{"i":"223","n":"APP)앱푸시-시간대별>APP)앱푸시 3","c":"APP"},{"i":"222","n":"APP)앱푸시-시간대별>APP)앱푸시 4","c":"APP"},{"i":"221","n":"APP)앱푸시-시간대별>APP)앱푸시 5","c":"APP"},{"i":"218","n":"APP)데이터라이즈-친구톡(장바구니 연관상품 추천)","c":"APP"},{"i":"217","n":"APP)국탕찜배너","c":"APP"},{"i":"211","n":"APP)히로인스","c":"APP"},{"i":"210","n":"APP)링킷","c":"APP"},{"i":"209","n":"APP) 네비게이션 가정의달","c":"APP"},{"i":"208","n":"APP)데이터라이즈-친구톡(구활 구매연관)","c":"APP"},{"i":"207","n":"APP)데이터라이즈-친구톡(구활 할인)","c":"APP"},{"i":"206","n":"APP)데이터라이즈-친구톡(구활 클릭)","c":"APP"},{"i":"205","n":"밴드AD_국가대표농수산","c":"기타"},{"i":"204","n":"APP)데이터라이즈_알림톡","c":"APP"},{"i":"203","n":"APP) 봄나들이 바로가기 버튼","c":"APP"},{"i":"202","n":"APP)히트상품 배너","c":"APP"},{"i":"200","n":"APP)와이즈트래커친구톡(장바구니 할인알리기)","c":"APP"},{"i":"199","n":"APP)데이터라이즈-친구톡(구매주기이탈률)","c":"APP"},{"i":"197","n":"APP)네비게이션 - 기획전","c":"APP"},{"i":"196","n":"APP)랭킹","c":"APP"},{"i":"195","n":"APP)상단메뉴-간편식","c":"APP"},{"i":"194","n":"APP)기획전카드배너","c":"APP"},{"i":"193","n":"APP)상단메뉴-김치맛집","c":"APP"},{"i":"192","n":"APP)와이즈트래커친구톡(관심상품군)","c":"APP"},{"i":"191","n":"APP)와이즈트래커친구톡(장바구니)","c":"APP"},{"i":"190","n":"APP)와이즈트래커친구톡(검색키워드 연관)","c":"APP"},{"i":"189","n":"APP)와이즈트래커친구톡(주문서작성 이탈)","c":"APP"},{"i":"188","n":"APP)와이즈트래커친구톡(30일 이내 구매한 상품과 비슷한 상품 추천)","c":"APP"},{"i":"187","n":"네이버광고_쇼핑검색","c":"기타"},{"i":"186","n":"크리테오","c":"기타"},{"i":"185","n":"네이버광고_GFA(대행사/애드부스트)","c":"기타"},{"i":"184","n":"네이버광고_GFA(대행사/피드)","c":"기타"},{"i":"183","n":"네이버광고_GFA(애드부스트)","c":"기타"},{"i":"182","n":"APP)데이터라이즈 브랜드메시지","c":"APP"},{"i":"181","n":"APP)데이터라이즈 문자 캠페인(방문-미구매 대상)","c":"APP"},{"i":"180","n":"카카오톡_제철채팅방메뉴3번","c":"기타"},{"i":"179","n":"카카오톡_제철채팅방메뉴2번","c":"기타"},{"i":"178","n":"APP)상단메뉴-설선물세트","c":"APP"},{"i":"177","n":"틱톡_원정대TEST_177","c":"기타"},{"i":"176","n":"틱톡_원정대TEST_176","c":"기타"},{"i":"175","n":"틱톡_원정대TEST_175","c":"기타"},{"i":"174","n":"APP)데이터라이즈 문자 캠페인(장바구니 발송실패 대상)","c":"APP"},{"i":"173","n":"173)인스타그램(광고-클릭후1일)","c":"기타"},{"i":"172","n":"APP)데이터라이즈 문자 캠페인(구활)","c":"APP"},{"i":"171","n":"APP)데이터라이즈 메시지 캠페인(구활)","c":"APP"},{"i":"170","n":"APP)데이터라이즈_친구톡(고이탈군 관심상품 추천)","c":"APP"},{"i":"169","n":"구글_검색캠페인","c":"기타"},{"i":"168","n":"APP)데이터라이즈_친구톡(검색키워드 연관)","c":"APP"},{"i":"167","n":"APP)데이터라이즈_친구톡(주문서작성 이탈)","c":"APP"},{"i":"166","n":"구글_머천트센터","c":"기타"},{"i":"165","n":"메타광고(인스타)_카탈로그","c":"기타"},{"i":"164","n":"카카오톡_전환광고(영상)","c":"기타"},{"i":"163","n":"APP)데이터라이즈_친구톡(첫구매유도)","c":"APP"},{"i":"162","n":"APP)데이터라이즈_친구톡(캐러셀형)","c":"APP"},{"i":"161","n":"APP)데이터라이즈_알림톡(만료 예정쿠폰)","c":"APP"},{"i":"160","n":"APP)데이터라이즈_알림톡(신규 회원가입)","c":"APP"},{"i":"159","n":"APP)데이터라이즈친구톡(고이탈군대상노출많은상품)","c":"APP"},{"i":"158","n":"APP)데이터라이즈친구톡(구매한 상품과 연관있는 상품)","c":"APP"},{"i":"157","n":"APP)데이터라이즈친구톡(관심 상품군)","c":"APP"},{"i":"156","n":"APP)데이터라이즈친구톡(장바구니)","c":"APP"},{"i":"155","n":"네이버광고_검색광고_브랜드검색(모바일)","c":"기타"},{"i":"154","n":"네이버광고_검색광고_브랜드검색(PC)","c":"기타"},{"i":"153","n":"네이버광고_검색광고_제철과일(프로모션)","c":"기타"},{"i":"152","n":"152)인스타광고_리타게팅","c":"기타"},{"i":"151","n":"APP)최상단 배너","c":"APP"},{"i":"149","n":"APP)데이터라이즈 기획전(메세지)","c":"APP"},{"i":"148","n":"APP)데이터라이즈 기획전(온사이트)","c":"APP"},{"i":"147","n":"페이스북(스토리)","c":"기타"},{"i":"146","n":"APP)상단메뉴-제철수산물","c":"APP"},{"i":"145","n":"APP)퀵메뉴 위 배너","c":"APP"},{"i":"144","n":"APP)데이터라이즈 문자 캠페인","c":"APP"},{"i":"143","n":"틱톡_게시물프로모션_소갈비찜-143","c":"기타"},{"i":"142","n":"틱톡_전환광고-142","c":"기타"},{"i":"141","n":"APP)상단메뉴-국탕찜","c":"APP"},{"i":"140","n":"APP)상단메뉴-무료배송","c":"APP"},{"i":"139","n":"APP)상단메뉴-덤증정","c":"APP"},{"i":"138","n":"APP)상단메뉴-전체보기","c":"APP"},{"i":"137","n":"APP) 상단메뉴 태그 배너","c":"APP"},{"i":"136","n":"밴드AD_팔팔농수산","c":"기타"},{"i":"135","n":"구글유튜브_영상매출","c":"기타"},{"i":"134","n":"APP)상세페이지상단","c":"APP"},{"i":"133","n":"모비온_전환광고","c":"기타"},{"i":"131","n":"APP) 오늘의 특가","c":"APP"},{"i":"130","n":"APP) 하루특가","c":"APP"},{"i":"129","n":"틱톡_게시물광고(소갈비찜)-129","c":"기타"},{"i":"128","n":"APP)상세페이지상단배너","c":"APP"},{"i":"127","n":"네이버광고_검색광고_브랜드","c":"기타"},{"i":"126","n":"틱톡_전환광고2-126","c":"기타"},{"i":"125","n":"틱톡_인포크링크-125","c":"기타"},{"i":"124","n":"틱톡_전환광고-124","c":"기타"},{"i":"123","n":"카카오톡_전환광고","c":"기타"},{"i":"122","n":"네이버광고_검색광고_상품","c":"기타"},{"i":"121","n":"카카오톡_제철밥상입니다","c":"기타"},{"i":"120","n":"네이버광고_GFA(피드)","c":"기타"},{"i":"119","n":"밴드AD_어판장삼촌","c":"기타"},{"i":"118","n":"밴드AD_이장님댁며느리","c":"기타"},{"i":"117","n":"APP)데이터라이즈 메시지 캠페인","c":"APP"},{"i":"116","n":"APP)과일배너(제철과일)","c":"APP"},{"i":"115","n":"APP)플렉스지 팝업(화면 중앙)","c":"APP"},{"i":"114","n":"APP)상세페이지최상단배너","c":"APP"},{"i":"113","n":"APP)상단메뉴(기획전위)","c":"APP"},{"i":"112","n":"APP)간편식배너","c":"APP"},{"i":"111","n":"APP)타임세일","c":"APP"},{"i":"110","n":"APP)앱푸시","c":"APP"},{"i":"108","n":"구글애즈광고(P-max)","c":"기타"},{"i":"107","n":"구글애즈광고(디스플레이)","c":"기타"},{"i":"106","n":"구글애즈광고(P-max-테스트)","c":"기타"},{"i":"105","n":"105)메타(인스타)광고-페이스북)","c":"기타"},{"i":"104","n":"104)인스타그램_게시물광고","c":"기타"},{"i":"102","n":"구글애즈광고_(디멘드젠)","c":"기타"},{"i":"101","n":"카카오톡_B채널","c":"기타"},{"i":"100","n":"카카오톡_A채널","c":"기타"},{"i":"99","n":"카카오톡_우리농부로부터","c":"기타"},{"i":"98","n":"인스타그램-릴스","c":"기타"},{"i":"97","n":"인스타그램-스레드","c":"기타"},{"i":"96","n":"APP)퀵메뉴","c":"APP"},{"i":"93","n":"APP)데이터라이즈팝업(화면하단)","c":"APP"},{"i":"92","n":"APP)탭메뉴(하단카테고리)","c":"APP"},{"i":"91","n":"인스타그램(shop)","c":"기타"},{"i":"90","n":"카카오스토리 D채널","c":"기타"},{"i":"89","n":"카카오스토리 C채널","c":"기타"},{"i":"88","n":"카카오스토리 B채널","c":"기타"},{"i":"87","n":"카카오스토리 A채널","c":"기타"},{"i":"84","n":"카카오톡_제철밥상농부","c":"기타"},{"i":"83","n":"APP)김치배너","c":"APP"},{"i":"82","n":"APP)떡배너","c":"APP"},{"i":"81","n":"APP)수산물배너","c":"APP"},{"i":"79","n":"APP)축산물배너","c":"APP"},{"i":"76","n":"APP)반찬배너","c":"APP"},{"i":"74","n":"APP)신상품배너","c":"APP"},{"i":"72","n":"APP)농산물배너(당일수확)","c":"APP"},{"i":"71","n":"카카오톡_구매전환광고","c":"기타"},{"i":"70","n":"밴드AD_백년농수산","c":"기타"},{"i":"69","n":"밴드AD_제철농수산","c":"기타"},{"i":"67","n":"카카오톡_산지농부들","c":"기타"},{"i":"65","n":"밴드AD_산지농산물","c":"기타"},{"i":"62","n":"밴드AD_약이되는제철밥상","c":"기타"},{"i":"61","n":"페이스북(게시물)","c":"기타"},{"i":"58","n":"밴드AD_산지농부들","c":"기타"},{"i":"57","n":"밴드AD_우리동네농부들","c":"기타"},{"i":"55","n":"APP)단골추천","c":"APP"},{"i":"54","n":"APP)기획전배너","c":"APP"},{"i":"53","n":"오픈채팅방_CS팀관리","c":"기타"},{"i":"52","n":"인스타그램(인포크링크-알림톡)","c":"기타"},{"i":"50","n":"카카오스토리 판매","c":"기타"},{"i":"45","n":"45)인스타그램(광고-인스타그램/페이스북)","c":"기타"},{"i":"44","n":"인스타그램(인포크링크)","c":"기타"},{"i":"6","n":"카카오톡_남성톡채널","c":"기타"},{"i":"1","n":"카카오톡_여성톡채널","c":"기타"},{"i":"0","n":"채널 외 (직접 유입)","c":"기타"}]
-const CODE_CATS = ['전체', ...[...new Set(CODES.map((c) => c.c))]]
-const codeName = (i) => CODES.find((c) => c.i === i)?.n || `코드 ${i}`
-
-const WEEKLY_GROUPS = [
-  { name: '밴드A',        idxs: '118,69,62,58' },
-  { name: '밴드B',        idxs: '136,70,65,57' },
-  { name: '카카오스토리', idxs: '90,89,88,87,50' },
-  { name: '카카오톡',     idxs: '232,180,179,121,101,100,99,84,67,6,1' },
-  { name: '카톡광고',     idxs: '164,123,71' },
-  { name: '앱(푸시제외)', idxs: '0,233,218,217,211,210,209,208,207,206,204,203,202,200,199,197,196,195,194,193,192,191,190,189,188,182,181,178,174,172,171,170,168,167,163,162,161,160,159,158,157,156,151,149,148,146,145,144,141,140,139,138,137,134,131,130,128,117,116,115,114,113,112,111,110,96,93,92,83,82,81,79,76,74,72,55,54' },
-  { name: '앱푸시',       idxs: '221,222,223,224,225' },
-  { name: '인스타그램',   idxs: '98,97,91,52,44' },
-  { name: 'SNS광고',      idxs: '173,165,152,133,105,104,45' },
-  { name: '페이스북',     idxs: '147,61' },
-  { name: '틱톡',         idxs: '177,176,175,143,142,129,126,125,124' },
-  { name: '일반광고',     idxs: '231,187,186,185,184,183,169,166,155,154,153,135,127,122,120,108,107,106,102' },
-]
+// v51.1: 추적코드 목록·그룹은 하드코딩하지 않음 — channels.js (FLEXG channel_regist + rpc_channel_rules) 참조
+const codeName = (i) => CH.codeName(i)
 
 const MODES = [
   { value: 'total',   label: '전체 매출' },
-  { value: 'groupA',  label: '앱+데라+왓츠 (채널외 포함)' },
-  { value: 'groupB',  label: '앱 · 푸시제외 (채널외 포함)' },
+  { value: 'groupA',  label: '앱 전체 (직접유입 포함)' },
+  { value: 'groupB',  label: '앱 배너·메뉴만 (직접유입 포함 · 푸시·CRM 제외)' },
   { value: 'compare', label: '채널 그룹 비교 (직접 선택)' },
   { value: 'custom',  label: '추적코드 직접 선택' },
 ]
@@ -93,6 +72,9 @@ const PARENT_CODE_ROWS = new Set(['APP)앱푸시-시간대별'])
 
 async function fetchSalesSummary(from, to, idxs, keyword = '') {
   const html = await (await fetch(salesUrl(from, to, idxs, keyword), { credentials: 'include' })).text()
+  // v51.1: 페이지에 심긴 summaryList JSON 우선 (정상금액=totalCalcedAmt · 결제건수=totalCalcedCnt · 판매이익=totalProfit)
+  const js = parseSummaryList(html)
+  if (js) return { cnt: js.cnt, amt: js.amt, profit: js.profit, rows: js.rows.map((r) => ({ name: r.name, amt: r.amt, cnt: r.cnt, profit: r.profit, idx: r.idx })) }
   const si = html.indexOf('class="summary')
   if (si < 0) return { cnt: 0, amt: 0, profit: 0, rows: [] }
 
@@ -528,7 +510,7 @@ function SalesSection() {
   const [cmpOn, setCmpOn] = useState(false)
   const [cmpRange, setCmpRange] = useState(null)
   const [mode, setMode] = useState('total')
-  const [groups, setGroups] = useState(['밴드A', '밴드B', '카카오톡', '앱(푸시제외)'])
+  const [groups, setGroups] = useState(() => CH.groups.slice(0, 4).map((g) => g.name))
   const [codeCat, setCodeCat] = useState('전체')
   const [codeSel, setCodeSel] = useState([])
   const [withDaily, setWithDaily] = useState(true)
@@ -560,7 +542,7 @@ function SalesSection() {
     const nDaysB = cmpActive ? dayCount(cmpRange.start, cmpRange.end) : 0
     if (nDaysB > 62) { setError('비교군 기간이 62일을 넘어요.'); return }
 
-    const selGroups = isCompareMode ? WEEKLY_GROUPS.filter((g) => groups.includes(g.name)) : []
+    const selGroups = isCompareMode ? CH.groups.filter((g) => groups.includes(g.name)) : []
     if (isCompareMode && selGroups.length === 0) { setError('비교할 채널 그룹을 하나 이상 선택해주세요.'); return }
     if (isCustomMode && codeSel.length === 0) { setError('추적코드를 하나 이상 선택해주세요.'); return }
 
@@ -572,7 +554,7 @@ function SalesSection() {
 
     setBusy(true); setError(null); setRes(null)
     try {
-      const modeIdxs = mode === 'groupA' ? GROUP_A : mode === 'groupB' ? GROUP_B : ''
+      const modeIdxs = mode === 'groupA' ? CH.GROUP_A : mode === 'groupB' ? CH.GROUP_B : ''
       const unionIdxs = isCompareMode
         ? [...new Set(selGroups.flatMap((g) => g.idxs.split(',')))].join(',')
         : isCustomMode ? codeSel.join(',') : modeIdxs
@@ -643,11 +625,11 @@ function SalesSection() {
     if (!range?.start || !range?.end) { setError('기간을 선택해주세요.'); return }
     if (cmpActive && (!cmpRange?.start || !cmpRange?.end)) { setError('비교군 기간을 선택해주세요.'); return }
 
-    const selGroups = isCompareMode ? WEEKLY_GROUPS.filter((g) => groups.includes(g.name)) : []
+    const selGroups = isCompareMode ? CH.groups.filter((g) => groups.includes(g.name)) : []
     const idxs = isCompareMode
       ? [...new Set(selGroups.flatMap((g) => g.idxs.split(',')))].join(',')
       : isCustomMode ? codeSel.join(',')
-      : mode === 'groupA' ? GROUP_A : mode === 'groupB' ? GROUP_B : ALL_IDXS
+      : mode === 'groupA' ? CH.GROUP_A : mode === 'groupB' ? CH.GROUP_B : CH.ALL
     if (isCustomMode && !codeSel.length) { setError('커스텀 모드예요 — 추적코드를 선택하거나 채널을 바꿔주세요.'); return }
 
     const total = codes.length * (cmpActive ? 2 : 1)
@@ -727,7 +709,7 @@ function SalesSection() {
               <div style={{ minWidth: 260 }}>
                 <MultiSelector
                   label="비교할 채널 그룹"
-                  options={WEEKLY_GROUPS.map((g) => g.name)}
+                  options={CH.groups.map((g) => g.name)}
                   value={groups}
                   onChange={setGroups}
                   hasSelectAll
@@ -737,12 +719,12 @@ function SalesSection() {
             {isCustomMode && (
               <>
                 <div style={{ minWidth: 130 }}>
-                  <Selector label="분류" options={CODE_CATS} value={codeCat} onChange={setCodeCat} />
+                  <Selector label="그룹" options={CH.cats} value={codeCat} onChange={setCodeCat} />
                 </div>
                 <div style={{ minWidth: 320 }}>
                   <MultiSelector
                     label={`추적코드 (${codeSel.length}개 선택됨)`}
-                    options={CODES.filter((c) => codeCat === '전체' || c.c === codeCat)
+                    options={CH.codes.filter((c) => codeCat === '전체' || c.c === codeCat)
                       .map((c) => ({ value: c.i, label: `${c.n} (${c.i})` }))}
                     value={codeSel}
                     onChange={setCodeSel}
@@ -1503,20 +1485,8 @@ export function reclassifyMap(map, rules) {
   return out
 }
 
-const CODE_TO_GROUP = (() => {
-  const m = new Map()
-  for (const g of WEEKLY_GROUPS) {
-    for (const idx of g.idxs.split(',')) {
-      const c = CODES.find((x) => x.i === idx)
-      if (c) m.set(c.n, g.name)
-    }
-  }
-  return m
-})()
-const groupOfChannel = (name) => {
-  if (!name || name === '(채널명 없음)') return '앱(푸시제외)'
-  return CODE_TO_GROUP.get(name) || '앱(푸시제외)'
-}
+// v51.1: 채널명 → 그룹 (설정_채널그룹 규칙, channels.js)
+const groupOfChannel = (name) => CH.groupOf(name)
 export const MATRIX_CLASS_ORDER = () => [...BASE_CLASSES.map((c) => c.name), ...EXT_CLASSES, '기타']
 
 export function computeChannelCategoryMatrix(headers, data, classMap) {
@@ -1560,7 +1530,7 @@ export function computeChannelCategoryMatrix(headers, data, classMap) {
     groupCodes.set(grp, gc)
   }
   const classes = MATRIX_CLASS_ORDER()
-  const groups = WEEKLY_GROUPS.map((g) => g.name).filter((g) => groupTotals.has(g))
+  const groups = [...CH.groups.map((g) => g.name), '기타'].filter((g) => groupTotals.has(g))
   const rows = groups.map((g) => {
     const gt = groupTotals.get(g)
     const byClass = {}
@@ -2669,8 +2639,8 @@ function OrdersSection() {
 
 /* ══════════════════ 기획전 상품 매출 섹션 ══════════════════ */
 
-// 채널외(0) + APP) 분류 추적코드 전체
-const PROMO_IDXS = ['0', ...CODES.filter((c) => c.c === 'APP' && c.i !== '0').map((c) => c.i)].join(',')
+// 채널외(0) + APP 계열 추적코드 전체 (channels.js — 직접유입·APP_배너·메뉴·APP_CRM메시지·APP_앱푸시)
+const PROMO_IDXS = () => CH.PROMO
 
 // 카테고리의 상품코드+상품명 조회 — 실제 goods_list 마크업 기반
 // (행마다 data-mgcode="SAI..." 2회 출현, 상품명은 class="goodstitle" 스팬)
@@ -2743,12 +2713,12 @@ function PromoSection() {
       const rows = []
       for (const code of codes) {
         step(`기간 A 조회 중… ${code}`)
-        const A = await fetchSalesSummary(range.start, range.end, PROMO_IDXS, code)
+        const A = await fetchSalesSummary(range.start, range.end, PROMO_IDXS(), code)
         tick(); await sleep(250)
         let B = null
         if (cmpOn) {
           step(`기간 B 조회 중… ${code}`)
-          B = await fetchSalesSummary(cmpRange.start, cmpRange.end, PROMO_IDXS, code)
+          B = await fetchSalesSummary(cmpRange.start, cmpRange.end, PROMO_IDXS(), code)
           tick(); await sleep(250)
         }
         rows.push({ name: code, amt: A.amt, cnt: A.cnt, profit: A.profit,
@@ -2831,7 +2801,7 @@ function PromoSection() {
             rows={3}
           />
           <Stack direction="horizontal" gap={3} vAlign="center" wrap="wrap">
-            <Badge variant="green" label={`채널: 채널외 + APP) 추적코드 ${PROMO_IDXS.split(',').length - 1}개`} />
+            <Badge variant="green" label={`채널: 채널외 + APP 계열 추적코드 ${PROMO_IDXS().split(',').length - 1}개`} />
             <Button label={busy ? '조회 중…' : '기획전 매출 불러오기'} variant="primary" isDisabled={busy} clickAction={load} />
           </Stack>
         </Stack>
@@ -4276,6 +4246,9 @@ function SalesClickSection() {
 export default function FlexgDash() {
   const [tab, setTab] = useState('sales')
   const [snapMsg, setSnapMsg] = useState(null)
+  const [chBusy, setChBusy] = useState(false)
+  const [epoch, setEpoch] = useState(0)   // v51.1: 스냅샷 불러오기·추적코드 새로고침 후 섹션 재마운트 (v50 setEpoch 미정의 버그 수정)
+  useEffect(() => { if (CH.ready) registerSnap('channels', CH.snapshot()) }, [])
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 24px 64px' }}>
@@ -4284,7 +4257,8 @@ export default function FlexgDash() {
           <Stack direction="horizontal" gap={1.5} vAlign="center">
             <Text type="display-2" weight="bold">제철밥상 데이터 조회</Text>
             <Badge variant="green" label="FLEXG 라이브" />
-            <Badge variant="neutral" label="v50 · 상품추천" />
+            <Badge variant="neutral" label="v51.1 · 추적코드 자동" />
+            <Badge variant={CH.ready && !CH.errors.length ? 'green' : 'warning'} label={`추적코드 ${CH.codes.length}개 · ${CH.source}`} />
             {VIEWER && <Badge variant="green" label={`뷰어 모드 · ${snapSavedAt() || ''} 저장본`} />}
             <div style={{ flex: 1 }} />
             <div className="no-print">
@@ -4316,11 +4290,21 @@ export default function FlexgDash() {
                            setTimeout(() => setSnapMsg(null), 4000)
                          } catch (err) { setSnapMsg('불러오기 실패: ' + (err.message || err)) }
                        }} />
+                {!VIEWER && <Button label="추적코드 새로고침" variant="secondary" size="sm" isDisabled={chBusy}
+                        clickAction={async () => {
+                          setChBusy(true)
+                          try { await initChannels({ force: true }); registerSnap('channels', CH.snapshot()); setSnapMsg(`추적코드 ${CH.codes.length}개 · ${CH.source}`) }
+                          finally { setChBusy(false); setEpoch((x) => x + 1); setTimeout(() => setSnapMsg(null), 4000) }
+                        }} />}
                 <Button label="PDF 저장" variant="secondary" size="sm" clickAction={() => window.print()} />
               </Stack>
             </div>
           </Stack>
           <Text color="secondary">정상금액 · 결제건수 기준 (매출기입 도구와 동일 산출식)</Text>
+          {CH.errors.length > 0 && (
+            <Banner status="warning" title="추적코드·규칙을 일부 불러오지 못했어요"
+                    description={`${CH.errors.join(' / ')} — 저장된 목록(${CH.codes.length}개)으로 계속합니다. FLEXG 로그인 상태를 확인하고 "추적코드 새로고침"을 눌러주세요.`} />
+          )}
         </Stack>
 
         <div className="no-print">
@@ -4335,13 +4319,13 @@ export default function FlexgDash() {
         </TabList>
         </div>
 
-        <div style={{ display: tab === 'sales' ? 'block' : 'none' }}><ErrorBoundary><SalesSection /></ErrorBoundary></div>
-        <div style={{ display: tab === 'members' ? 'block' : 'none' }}><ErrorBoundary><MembersSection /></ErrorBoundary></div>
-        <div style={{ display: tab === 'orders' ? 'block' : 'none' }}><ErrorBoundary><OrdersSection /></ErrorBoundary></div>
-        <div style={{ display: tab === 'promo' ? 'block' : 'none' }}><ErrorBoundary><PromoSection /></ErrorBoundary></div>
-        <div style={{ display: tab === 'coupon' ? 'block' : 'none' }}><ErrorBoundary><CouponSection /></ErrorBoundary></div>
-        <div style={{ display: tab === 'usertype' ? 'block' : 'none' }}><ErrorBoundary><MemberTypeSection /></ErrorBoundary></div>
-        <div style={{ display: tab === 'salesclick' ? 'block' : 'none' }}><ErrorBoundary><SalesClickSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'sales' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><SalesSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'members' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><MembersSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'orders' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><OrdersSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'promo' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><PromoSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'coupon' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><CouponSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'usertype' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><MemberTypeSection /></ErrorBoundary></div>
+        <div style={{ display: tab === 'salesclick' ? 'block' : 'none' }}><ErrorBoundary key={epoch}><SalesClickSection /></ErrorBoundary></div>
 
         <Divider />
         <Text type="supporting" color="secondary">

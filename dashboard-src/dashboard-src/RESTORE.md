@@ -1,4 +1,4 @@
-# jwbm-dashboard 소스 백업 (v50.4)
+# jwbm-dashboard 소스 백업 (v51.1)
 
 제철밥상 FLEXG 관리자 북마클릿 대시보드 소스 전체.
 컨테이너/환경이 초기화됐을 때 이 폴더만 있으면 완전 복원 가능.
@@ -27,6 +27,7 @@ NODE_OPTIONS="--max-old-space-size=4096" npx vite-node repro_all.jsx   # 14/14 �
 ## 구조
 
 - `src/FlexgDash.jsx` — 메인 (탭 7개: 매출/회원/주문서/기획전/쿠폰/회원유형/상품추천)
+- `src/channels.js` — v51.1 추적코드 레지스트리 (FLEXG channel_regist 조회 + Supabase rpc_channel_rules 그룹핑 + 24h 캐시 + summaryList 파서)
 - `src/salesClick.js` — 클릭/구매전환 파서·지표 (파일+라이브 조회)
 - `src/memberProject.js` / `orderParse.js` / `*Worker.js` — 파싱 계층
 - `vite.flexg.config.js` — 북마클릿 단일파일 빌드 설정
@@ -39,6 +40,8 @@ NODE_OPTIONS="--max-old-space-size=4096" npx vite-node repro_all.jsx   # 14/14 �
 (jsDelivr: `cdn.jsdelivr.net/gh/lynn03351/jwbm-assets@main/jwbm_sales_dashboard.js`)
 
 ## 버전 이력 (요약)
+
+- v51.1: 추적코드·그룹 하드코딩 제거 → FLEXG `/Good/channel_regist` 라이브 조회(173개) + `rpc_channel_rules` 그룹 규칙. 매출 파서를 `summaryList` JSON으로 교체(정규식 폐기). publishable 키는 북마클릿 → `window.__JWBM_SB_KEY__`. v50 `setEpoch` 미정의 버그 수정
 
 - v50.4: 신규 코드 243·242(데라 친구톡 카탈로그)·241(추석기획전 탭), WEEKLY_GROUPS 앱그룹 238~243 반영, 순수앱 정규식 데이터라이즈 매칭 수정
 - v50.3: 신규 추적코드 240·239·238 (가공육/등급별할인관/제철맛지도), KST 날짜 버그 수정(iso/eachDay), 회원유형 비교 가입기간
