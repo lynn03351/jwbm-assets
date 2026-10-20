@@ -155,7 +155,7 @@ export async function initChannels({ fetchImpl = fetch, key, viewerSnap = null, 
 
 /* ── sales_channel 응답의 summaryList JSON 파서 (정규식 표 파싱 대체) ── */
 // 반환: { amt, cnt, profit, rows: [{idx, name, amt, cnt, profit, parent}] }
-//  - amt = 정상금액(totalCalcedAmt) · cnt = 결제건수(totalCalcedCnt) · profit = 판매이익(totalProfit)
+//  - amt = 정상금액(totalCalcedAmt) · cnt = 정상건수(totalCalcedCnt, 취소 제외) · profit = 판매이익(totalProfit)
 //  - 합계는 최상위 노드 합(= 화면 소계), rows 는 말단(자식 있는 부모는 자식으로 대체)
 export function parseSummaryList(html) {
   const st = html.indexOf('var summaryList')

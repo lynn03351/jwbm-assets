@@ -67,12 +67,12 @@ function cellsOf(seg) {
 }
 
 // 채널 조회: summary 소계 + 추적코드별 개별 행 파싱
-// (point9=정상금액, 다음 셀=결제건수, 마지막=판매이익 — 개별 행은 소계와 같은 컬럼 구조)
+// (point9=정상금액, 다음 셀=정상건수, 마지막=판매이익 — 개별 행은 소계와 같은 컬럼 구조)
 const PARENT_CODE_ROWS = new Set(['APP)앱푸시-시간대별'])
 
 async function fetchSalesSummary(from, to, idxs, keyword = '') {
   const html = await (await fetch(salesUrl(from, to, idxs, keyword), { credentials: 'include' })).text()
-  // v51.1: 페이지에 심긴 summaryList JSON 우선 (정상금액=totalCalcedAmt · 결제건수=totalCalcedCnt · 판매이익=totalProfit)
+  // v51.1: 페이지에 심긴 summaryList JSON 우선 (정상금액=totalCalcedAmt · 정상건수=totalCalcedCnt · 판매이익=totalProfit)
   const js = parseSummaryList(html)
   if (js) return { cnt: js.cnt, amt: js.amt, profit: js.profit, rows: js.rows.map((r) => ({ name: r.name, amt: r.amt, cnt: r.cnt, profit: r.profit, idx: r.idx })) }
   const si = html.indexOf('class="summary')
@@ -119,15 +119,20 @@ async function fetchSalesSummary(from, to, idxs, keyword = '') {
   return { ...summary, rows }
 }
 
-// 전체 조회: 일별 리스트 소계행 trcolorline (c[6]=결제건수, c[9]=정상금액, c[13]=판매이익)
+// 전체 조회: summaryList 우선. 없으면 일별 소계행 trcolorline
+//  (c[5]=결제금액 c[6]=결제건수 c[8]=취소건수/부분취소 c[9]=정상금액 c[13]=판매이익 — 정상건수 칸이 없어 결제건수−취소건수로 계산)
+// v51.1 수정: 종전엔 c[6]=결제건수를 그대로 썼음(취소 포함). 모든 건수는 정상건수 기준으로 통일
 async function fetchTotalDaily(from, to) {
   const html = await (await fetch(salesUrl(from, to, ''), { credentials: 'include' })).text()
+  const js = parseSummaryList(html)
+  if (js) return { cnt: js.cnt, amt: js.amt, profit: js.profit, rows: [] }
   const idx = html.indexOf('trcolorline')
   if (idx < 0) return { cnt: 0, amt: 0, profit: 0, rows: [] }
   const seg = html.slice(html.lastIndexOf('<tr', idx), html.indexOf('</tr>', idx))
   const c = cellsOf(seg).map((x) => x.txt)
   if (c.length < 14) return { cnt: 0, amt: 0, profit: 0, rows: [] }
-  return { cnt: numOf(c[6]), amt: numOf(c[9]), profit: numOf(c[13]), rows: [] }
+  const cancelCnt = numOf(String(c[8]).split('/')[0])   // '7 /5' → 7 (취소건수, 부분취소 제외)
+  return { cnt: numOf(c[6]) - cancelCnt, amt: numOf(c[9]), profit: numOf(c[13]), rows: [] }
 }
 
 // 회원 수: 가입일 필터로 조회, "전체 N" 카운트 파싱
@@ -321,7 +326,7 @@ const CMP_A = 'var(--ch-app, #1c4f3a)'
 const CMP_B = 'var(--ch-kakao, #e6b422)'
 const METRICS = [
   { value: 'amt',    label: '정상금액', fmt: won, axis: manwon },
-  { value: 'cnt',    label: '결제건수', fmt: (n) => comma(n) + '건', axis: comma },
+  { value: 'cnt',    label: '정상건수', fmt: (n) => comma(n) + '건', axis: comma },
   { value: 'profit', label: '판매이익', fmt: won, axis: manwon },
   { value: 'aov',    label: '객단가',   fmt: won, axis: manwon },
 ]
@@ -459,7 +464,7 @@ function TrackingCodesCard({ rowsA, rowsB, cmp }) {
   const cols = [
     { key: 'name', header: '추적코드 / 채널' },
     { key: 'amt', header: cmp ? '정상금액 (A)' : '정상금액', renderCell: (r) => won(r.amt) },
-    { key: 'cnt', header: cmp ? '결제건수 (A)' : '결제건수', renderCell: (r) => comma(r.cnt) },
+    { key: 'cnt', header: cmp ? '정상건수 (A)' : '정상건수', renderCell: (r) => comma(r.cnt) },
   ]
   if (cmp) {
     cols.push(
@@ -761,8 +766,8 @@ function SalesSection() {
 
           <Grid columns={{ minWidth: 200, repeat: 'fit' }} gap={3}>
             <Kpi label="정상금액" value={won(s.amt)} badge={<DeltaBadge cur={s.amt} prev={res.summaryB?.amt} label={deltaLabel} />} />
-            <Kpi label="결제건수" value={comma(s.cnt) + '건'} badge={<DeltaBadge cur={s.cnt} prev={res.summaryB?.cnt} label={deltaLabel} />} />
-            <Kpi label="객단가" value={won(aov)} sub="정상금액 ÷ 결제건수" />
+            <Kpi label="정상건수" value={comma(s.cnt) + '건'} badge={<DeltaBadge cur={s.cnt} prev={res.summaryB?.cnt} label={deltaLabel} />} />
+            <Kpi label="객단가" value={won(aov)} sub="정상금액 ÷ 정상건수" />
             <Kpi label="판매이익" value={won(s.profit)} badge={<DeltaBadge cur={s.profit} prev={res.summaryB?.profit} label={deltaLabel} />} />
           </Grid>
 
@@ -837,7 +842,7 @@ function SalesSection() {
                     columns={[
                       { key: 'name', header: '그룹' },
                       { key: 'amt', header: '정상금액', renderCell: (r) => won(r.amt) },
-                      { key: 'cnt', header: '결제건수', renderCell: (r) => comma(r.cnt) },
+                      { key: 'cnt', header: '정상건수', renderCell: (r) => comma(r.cnt) },
                       { key: 'profit', header: '판매이익', renderCell: (r) => won(r.profit) },
                     ]}
                   />
@@ -896,7 +901,7 @@ function SalesSection() {
             <Grid columns={{ minWidth: 200, repeat: 'fit' }} gap={3}>
               <Kpi label="정상금액 합계" value={won(resProd.totals.amt)}
                    badge={resProd.cmp ? <DeltaBadge cur={resProd.totals.amt} prev={resProd.totals.amtB} label="비교 기간 대비" /> : null} />
-              <Kpi label="결제건수 합계" value={comma(resProd.totals.cnt) + '건'}
+              <Kpi label="정상건수 합계" value={comma(resProd.totals.cnt) + '건'}
                    badge={resProd.cmp ? <DeltaBadge cur={resProd.totals.cnt} prev={resProd.totals.cntB} label="비교 기간 대비" /> : null} />
               <Kpi label="판매이익 합계" value={won(resProd.totals.profit)} />
               <Kpi label="조회 상품" value={comma(resProd.rows.length) + '개'} sub="0원 상품 포함" />
@@ -927,7 +932,7 @@ function SalesSection() {
                       { key: 'amtB', header: 'B 매출', sortable: true, renderCell: (r) => won(r.amtB) },
                       { key: 'dAmt', header: '변동', renderCell: (r) => <DeltaCellBadge cur={r.amt} prev={r.amtB} /> },
                     ] : []),
-                    { key: 'cnt', header: resProd.cmp ? 'A 건수' : '결제건수', sortable: true, renderCell: (r) => comma(r.cnt) },
+                    { key: 'cnt', header: resProd.cmp ? 'A 건수' : '정상건수', sortable: true, renderCell: (r) => comma(r.cnt) },
                     ...(resProd.cmp ? [
                       { key: 'cntB', header: 'B 건수', sortable: true, renderCell: (r) => comma(r.cntB) },
                     ] : []),
@@ -4300,7 +4305,7 @@ export default function FlexgDash() {
               </Stack>
             </div>
           </Stack>
-          <Text color="secondary">정상금액 · 결제건수 기준 (매출기입 도구와 동일 산출식)</Text>
+          <Text color="secondary">정상금액 · 정상건수 기준 (취소 제외 · 매출기입 도구와 동일 산출식)</Text>
           {CH.errors.length > 0 && (
             <Banner status="warning" title="추적코드·규칙을 일부 불러오지 못했어요"
                     description={`${CH.errors.join(' / ')} — 저장된 목록(${CH.codes.length}개)으로 계속합니다. FLEXG 로그인 상태를 확인하고 "추적코드 새로고침"을 눌러주세요.`} />
