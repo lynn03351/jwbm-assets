@@ -41,7 +41,7 @@ NODE_OPTIONS="--max-old-space-size=4096" npx vite-node repro_all.jsx   # 14/14 �
 
 ## 버전 이력 (요약)
 
-- v51.1: 추적코드·그룹 하드코딩 제거 → FLEXG `/Good/channel_regist` 라이브 조회(173개) + `rpc_channel_rules` 그룹 규칙. 매출 파서를 `summaryList` JSON으로 교체(정규식 폐기). publishable 키는 북마클릿 → `window.__JWBM_SB_KEY__`. v50 `setEpoch` 미정의 버그 수정
+- v51.1: 전체 매출 모드 건수를 결제건수→정상건수(취소 제외)로 수정. 추적코드·그룹 하드코딩 제거 → FLEXG `/Good/channel_regist` 라이브 조회(173개) + `rpc_channel_rules` 그룹 규칙. 매출 파서를 `summaryList` JSON으로 교체(정규식 폐기). publishable 키는 북마클릿 → `window.__JWBM_SB_KEY__`. v50 `setEpoch` 미정의 버그 수정
 
 - v50.4: 신규 코드 243·242(데라 친구톡 카탈로그)·241(추석기획전 탭), WEEKLY_GROUPS 앱그룹 238~243 반영, 순수앱 정규식 데이터라이즈 매칭 수정
 - v50.3: 신규 추적코드 240·239·238 (가공육/등급별할인관/제철맛지도), KST 날짜 버그 수정(iso/eachDay), 회원유형 비교 가입기간
