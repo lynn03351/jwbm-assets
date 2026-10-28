@@ -4,7 +4,7 @@
    - 북마클릿 로더로 실행, Shadow DOM으로 어드민 CSS와 격리
    ============================================================ */
 (function () {
-  var HELPER_VERSION = '1.5';
+  var HELPER_VERSION = '2.0';   // v2.0: 선정판 승인분 자동 로드 + 복사본 코드 기록
   // 같은 버전이면 다시 보여주기만, 다른 버전이면 기존 창 제거 후 재생성
   if (window.__JBK_DEAL_HELPER__) {
     if (window.__JBK_DEAL_HELPER__.version === HELPER_VERSION) { window.__JBK_DEAL_HELPER__.show(); return; }
@@ -132,6 +132,22 @@
   .check-progress{font-size:12px;color:#6b7a72;font-weight:400}
   .reset-btn{background:none;border:1px solid #e3e1d9;border-radius:6px;color:#6b7a72;font-size:11px;padding:4px 10px;cursor:pointer;font-family:inherit}
   .warn{background:#fdf3f1;border:1px solid #f0d6d1;color:#c0392b;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:10px}
+
+  /* v2 승인분 패널 */
+  .pending{padding:10px 20px;background:#fff7e6;border-bottom:1px solid #e3e1d9;flex-shrink:0}
+  .pending .ph{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#6b7a72;margin-bottom:6px}
+  .pending .ph b{color:#8a5a00;font-size:13px}
+  .pending .ph input{width:260px;padding:5px 8px;border:1px solid #e3e1d9;border-radius:6px;font-family:Consolas,monospace;font-size:12px}
+  .pending .ph button{padding:5px 10px;border:1px solid #e3e1d9;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:inherit}
+  .pcards{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+  .pcard{flex:0 0 auto;width:230px;border:1px solid #e3d9c2;background:#fff;border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;display:flex;gap:8px;align-items:center}
+  .pcard:hover{border-color:#b8860b}
+  .pcard.on{border-color:#b8860b;box-shadow:inset 0 0 0 1px #b8860b}
+  .pcard img{width:44px;height:44px;border-radius:6px;object-fit:cover;background:#eee;flex:0 0 auto}
+  .pcard .pn{font-weight:700;color:#22302a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pcard .pm{color:#6b7a72;font-size:11px}
+  .pcard .pc{font-family:Consolas,monospace;color:#7b2fbe;font-size:11px}
+  #pendMsg{font-size:12px;color:#6b7a72}
 </style>
 
 <div class="backdrop" id="backdrop"></div>
@@ -141,6 +157,14 @@
     <div class="sub">코드 입력 → 불러오기 → 시트 행 · 고지문 · 체크리스트</div>
     <button class="x-btn" id="closeBtn" title="닫기 (ESC)">✕</button>
   </header>
+
+  <div class="pending" id="pending">
+    <div class="ph"><b>선정판 승인분</b><span id="pendMsg">불러오는 중…</span>
+      <span style="flex:1"></span>
+      <input type="text" id="sbKey" placeholder="Supabase publishable 키 (한 번만)">
+      <button id="sbKeySave">연결</button><button id="pendReload">새로고침</button></div>
+    <div class="pcards" id="pcards"></div>
+  </div>
 
   <div class="loadbar">
     <input type="text" id="loadCode" placeholder="본링크 코드 (SAI...)">
@@ -376,6 +400,7 @@
       applySrc(srcData);
       msg.className = 'ok';
       msg.textContent = '✓ ' + (srcData.name || code) + ' — 옵션 ' + opts.length + '개';
+      if (planToApply && planToApply.src_code === code) { applyPlan(planToApply); planToApply = null; }
     } catch (e) {
       msg.className = 'err'; msg.textContent = '✗ ' + e.message;
     } finally { btn.disabled = false; }
@@ -602,8 +627,11 @@
       }
       const newCode = m[0];
       $('codeCopy').value = newCode;
-      noticeEdited = false;
+      if (!currentPlan) noticeEdited = false;
       renderAll();
+      if (currentPlan && currentPlan.deal_id) sbRpc('rpc_deal_update', { p_deal_id: currentPlan.deal_id, p: { copy_code: newCode, status: 'live' } })
+        .then(() => { setPendMsg('✓ 복사본 ' + newCode + ' 를 선정판에 기록 (진행 중)'); loadPending(); })
+        .catch(e => setPendMsg('복사본 기록 실패: ' + e.message));
       setCreateMsg('✓ 복사본 ' + newCode + ' 생성 — 새 탭에서 자동 입력 중...', 'ok');
       openAndFill(newCode, d);
     } catch (e) {
@@ -830,6 +858,94 @@
     const c = $('codeCopy').value.trim();
     if (c) window.open('/Good/registration/' + c + '/?modal=Y', '_blank');
   });
+
+  /* ---------------- v2: 선정판(Supabase) 연동 ---------------- */
+  const SB_URL = 'https://sukgkojfvyijpewxpcoa.supabase.co';
+  const KEY_LS = 'jwbm_sb_pub_key';
+  let planToApply = null, currentPlan = null, pendingList = [];
+  function sbKey() { try { return window.__JWBM_SB_KEY__ || localStorage.getItem(KEY_LS) || ''; } catch (e) { return window.__JWBM_SB_KEY__ || ''; } }
+  function setPendMsg(t) { $('pendMsg').textContent = t; }
+  async function sbRpc(fn, payload) {
+    const key = sbKey();
+    if (!key) throw new Error('Supabase 키 없음');
+    const res = await fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST', headers: { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+    if (!res.ok) throw new Error('rpc ' + fn + ' HTTP' + res.status + ' ' + (await res.text()).slice(0, 120));
+    const t = await res.text(); return t ? JSON.parse(t) : null;
+  }
+  async function loadPending() {
+    const wrap = $('pcards');
+    if (!sbKey()) { setPendMsg('Supabase publishable 키를 넣고 [연결] — 이후엔 자동'); wrap.innerHTML = ''; return; }
+    $('sbKey').style.display = 'none'; $('sbKeySave').style.display = 'none';
+    setPendMsg('불러오는 중…');
+    try {
+      pendingList = await sbRpc('rpc_deal_pending', {}) || [];
+      if (!pendingList.length) { setPendMsg('세팅 대기 중인 특가 없음 (선정판에서 승인하면 여기 뜸)'); wrap.innerHTML = ''; return; }
+      setPendMsg(pendingList.length + '건 대기 — 카드를 누르면 폼이 채워짐');
+      wrap.innerHTML = pendingList.map((d, i) => '<div class="pcard" data-i="' + i + '">' +
+        (d.thumb_url ? '<img src="' + d.thumb_url + '" alt="">' : '<div style="width:44px;height:44px;border-radius:6px;background:#eee"></div>') +
+        '<div style="min-width:0"><div class="pn" title="' + String(d.name || '').replace(/"/g, '&quot;') + '">' + (d.name || '') + '</div>' +
+        '<div class="pm">' + (d.rate_after != null ? Math.round(d.rate_after * 100) + '%' : '-') + (d.rate_keep ? '(유지)' : '') + ' · ' + shortDate(d.start_date) + '~' + shortDate(d.end_date) + ' · ' + (d.limit_total || '?') + (d.limit_unit || '') + '</div>' +
+        '<div class="pc">' + d.src_code + (d.copy_code ? ' → ' + d.copy_code : '') + '</div></div></div>').join('');
+      wrap.querySelectorAll('.pcard').forEach(c => c.addEventListener('click', () => pickPlan(pendingList[Number(c.dataset.i)], c)));
+    } catch (e) { setPendMsg('✗ ' + e.message); }
+  }
+  function pickPlan(d, card) {
+    root.querySelectorAll('.pcard').forEach(x => x.classList.remove('on')); if (card) card.classList.add('on');
+    currentPlan = d; planToApply = d;
+    $('loadCode').value = d.src_code;
+    loadGoods(d.src_code);
+  }
+  function snap30(t) { if (!t) return null; const m = String(t).match(/^(\d{1,2}):(\d{2})/); if (!m) return null; const h = String(m[1]).padStart(2, '0'); return h + ':' + (Number(m[2]) >= 30 ? '30' : '00'); }
+  async function applyPlan(d) {
+    // 상품명: [N단위 한정] 접두어는 limitTag 가 붙이므로 벗겨서 넣음
+    const base = String(d.new_name || d.name || '').replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim();
+    if (base) $('nameNew').value = base;
+    if (d.limit_total != null) $('limitNum').value = d.limit_total;
+    if (d.limit_unit) $('limitUnit').value = d.limit_unit;
+    if (d.start_date) $('dStart').value = d.start_date;
+    if (d.end_date) $('dEnd').value = d.end_date;
+    const ts = snap30(d.start_time), te = snap30(d.end_time);
+    if (ts) $('tStart').value = ts; if (te) $('tEnd').value = te;
+    if (d.rate_keep) {
+      if (srcData && srcData.displayPrice != null) { $('priceAfter').value = srcData.displayPrice; $('rateAfter').value = srcData.rate == null ? '' : srcData.rate; }
+      setHint('이전판매가 유지 (선정판에서 "수정 안함")');
+    } else if (d.rate_after != null) {
+      $('rateAfter').value = Math.round(d.rate_after * 100);
+      rateToPrice();
+      if (d.display_after) $('priceAfter').value = d.display_after;
+    }
+    // 옵션별 재고: 이름 일치로 채움
+    if (srcData && srcData.options && Array.isArray(d.option_qty)) {
+      const rows = $('optStockWrap').querySelectorAll('input');
+      srcData.options.forEach((o, i) => {
+        const q = d.option_qty.find(x => String(x.name || '').trim() === String(o.name || '').trim());
+        if (q && q.qty != null && rows[i]) { rows[i].value = q.qty; optStocks[i] = Number(q.qty); }
+      });
+      syncOptStocks();
+    }
+    // 고지문: 선정판 멘트 우선
+    if (d.notice) { $('noticeText').value = d.notice; noticeEdited = true; }
+    // 썸네일: Storage 에서 받아 파일로
+    if (d.thumb_url) {
+      try {
+        const r = await fetch(d.thumb_url); const b = await r.blob();
+        thumbFile = new File([b], (d.src_code || 'thumb') + '.png', { type: b.type || 'image/png' });
+        $('thumbInfo').textContent = '✓ 선정판 썸네일 (' + Math.round(b.size / 1024) + 'KB) — 복사본 생성 시 자동 첨부';
+      } catch (e) { $('thumbInfo').textContent = '썸네일 자동 로드 실패 — 직접 첨부: ' + e.message; }
+    }
+    renderAll();
+    setPendMsg('✓ ' + (d.name || d.src_code) + ' 채움 — 확인 후 [복사본 생성]');
+  }
+  $('sbKeySave').addEventListener('click', () => {
+    const k = $('sbKey').value.trim(); if (!k) return;
+    try { localStorage.setItem(KEY_LS, k); } catch (e) {}
+    window.__JWBM_SB_KEY__ = k; loadPending();
+  });
+  $('pendReload').addEventListener('click', loadPending);
+  loadPending();
 
   /* 닫기/보이기 */
   const escHandler = e => { if (e.key === 'Escape') api.hide(); };
